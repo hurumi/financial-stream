@@ -69,9 +69,9 @@ def get_usdkrw():
 
     return exchange_rate['rates']['KRW']
 
-def check_oversold( entry ):
+def check_oversold( entry, rsi_range ):
 
-    if entry[ 'RSI(14)' ] > _RSI_THRESHOLD_L:
+    if entry[ 'RSI(14)' ] > rsi_range[0]:
         return False
 
     if entry[ 'CCI(14)' ] > _CCI_THRESHOLD_L:
@@ -79,9 +79,9 @@ def check_oversold( entry ):
 
     return True
 
-def check_overbought( entry ):
+def check_overbought( entry, rsi_range ):
 
-    if entry[ 'RSI(14)' ] < _RSI_THRESHOLD_H:
+    if entry[ 'RSI(14)' ] < rsi_range[1]:
         return False      
 
     if entry[ 'CCI(14)' ] < _CCI_THRESHOLD_H:
@@ -337,14 +337,7 @@ for key, val in stock_list.summary_detail.items():
                 sub_val = ( entry[ 'Price' ]-sub_val ) / sub_val * 100.
             entry[ attr_list[ sub_key ] ] = sub_val
 
-    table_data[ key ] = entry 
-
-# check over conditions
-oversold_data   = {}
-overbought_data = {}
-for key, val in table_data.items():
-    if check_oversold  ( val ): oversold_data  [ key ] = val
-    if check_overbought( val ): overbought_data[ key ] = val
+    table_data[ key ] = entry
 
 # -------------------------------------------------------------------------------------------------
 # Portfolio
@@ -359,11 +352,26 @@ if menu == 'Portfolio':
     df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
     st.write( df )
 
+    # RSI margin
+    select = st.select_slider(
+        'RSI Range',
+        options=[ '40-60', '35-65', '30-70', '25-75', '20-80' ],
+        value = '30-70' )
+    _temp = select.split('-')
+    rsi_range = [ int( _temp[0] ), int( _temp[1] ) ]
+
+    # generate oversold and overbought data
+    oversold_data   = {}
+    overbought_data = {}
+    for key, val in table_data.items():
+        if check_oversold  ( val, rsi_range ): oversold_data  [ key ] = val
+        if check_overbought( val, rsi_range ): overbought_data[ key ] = val
+
     # sub title
     st.subheader( 'Oversold' )
 
     # write noted list
-    st.text( f'RSI<{_RSI_THRESHOLD_L} and CCI<{_CCI_THRESHOLD_L}' )
+    st.text( f'RSI<{rsi_range[0]} and CCI<{_CCI_THRESHOLD_L}' )
     
     if oversold_data != {}:
         df = pd.DataFrame.from_dict( oversold_data, orient='index' ).sort_values( by='RSI(14)' )
@@ -374,7 +382,7 @@ if menu == 'Portfolio':
     st.subheader( 'Overbought' )
 
     # write noted list
-    st.text( f'RSI>{_RSI_THRESHOLD_H} and CCI>{_CCI_THRESHOLD_H}' )
+    st.text( f'RSI>{rsi_range[1]} and CCI>{_CCI_THRESHOLD_H}' )
     
     if overbought_data != {}:
         df = pd.DataFrame.from_dict( overbought_data, orient='index' ).sort_values( by='RSI(14)' )
