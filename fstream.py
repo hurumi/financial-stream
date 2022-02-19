@@ -355,7 +355,7 @@ if menu == 'Portfolio':
     st.subheader( 'Portfolio' )
     
     # write summary
-    df = pd.DataFrame.from_dict( table_data, orient='index' )
+    df = pd.DataFrame.from_dict( table_data, orient='index' ).sort_values( by='RSI(14)' )
     df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
     st.write( df )
 
