@@ -366,7 +366,7 @@ if menu == 'Portfolio':
     st.text( f'RSI<{_RSI_THRESHOLD_L} and CCI<{_CCI_THRESHOLD_L}' )
     
     if oversold_data != {}:
-        df = pd.DataFrame.from_dict( oversold_data, orient='index' )
+        df = pd.DataFrame.from_dict( oversold_data, orient='index' ).sort_values( by='RSI(14)' )
         df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
         st.write( df )
 
@@ -377,7 +377,7 @@ if menu == 'Portfolio':
     st.text( f'RSI>{_RSI_THRESHOLD_H} and CCI>{_CCI_THRESHOLD_H}' )
     
     if overbought_data != {}:
-        df = pd.DataFrame.from_dict( overbought_data, orient='index' )
+        df = pd.DataFrame.from_dict( overbought_data, orient='index' ).sort_values( by='RSI(14)' )
         df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
         st.write( df )
 
