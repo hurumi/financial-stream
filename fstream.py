@@ -48,7 +48,7 @@ _CCI_THRESHOLD_H =  100
 @st.experimental_singleton
 def fetch_tickers( tickers ):
     
-    _list = Ticker( tickers, verify=False )
+    _list = Ticker( tickers, verify=False, asynchronous=True )
     return _list
 
 @st.experimental_singleton
