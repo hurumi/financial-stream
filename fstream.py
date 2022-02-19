@@ -15,6 +15,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import talib  as ta
+import os
 
 from yahooquery import Ticker
 
@@ -22,7 +23,6 @@ from yahooquery import Ticker
 # Globals
 # -------------------------------------------------------------------------------------------------
 
-port_tickers = [ 'MSFT', 'AAPL', 'SPLG', 'QQQ', 'JEPI', 'TSLA' ]
 mark_tickers = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
 attr_list = { 
     'regularMarketChangePercent':'Change(%)', 
@@ -35,6 +35,9 @@ attr_list = {
     'YM=F':'DOW Futures',
     'KRW=X':'USD/KRW',
 }
+
+_DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
+_PORT_FILE       = "port.txt"
 
 _RSI_THRESHOLD_L =   30
 _RSI_THRESHOLD_H =   70
@@ -55,12 +58,7 @@ def fetch_tickers( tickers ):
 def fetch_history( _ticker_list, period, interval ):
 
     _hist = _ticker_list.history( period, interval )
-    return _hist
-
-def fetch_history_nocache( _ticker_list, period, interval ):
-
-    _hist = _ticker_list.history( period, interval )
-    return _hist    
+    return _hist 
 
 def get_usdkrw():
 
@@ -283,6 +281,45 @@ def get_market_chart( ticker, num_points ):
 
         return ch+prev
 
+def fill_table( stock_list ):
+
+    # data from Ticker.price
+    _table_data = {}
+    for key, val in stock_list.price.items():
+        # initialize
+        entry = {}
+
+        # for each items
+        for sub_key, sub_val in val.items():
+            if sub_key in attr_list:
+                if "Percent" in sub_key: sub_val *= 100.
+                entry[ attr_list[ sub_key ] ] = sub_val
+
+        # compute RSI
+        rsi = ta.RSI( stock_histo['close'][ key ] )[-1]
+        entry[ 'RSI(14)' ] = rsi
+
+        # compute CCI
+        cci = ta.CCI( stock_histo['high'][ key ], stock_histo['low'][ key ], stock_histo['close'][ key ] )[-1]
+        entry[ 'CCI(14)' ] = cci
+        
+        # replace
+        _table_data[ key ] = entry
+
+    # data from Ticker.summary_detail
+    for key, val in stock_list.summary_detail.items():
+        entry = _table_data[ key ]
+        for sub_key, sub_val in val.items():
+            if sub_key in attr_list:
+                if "Percent" in sub_key: sub_val *= 100.
+                if sub_key == 'fiftyTwoWeekHigh' or sub_key == 'fiftyTwoWeekLow':
+                    sub_val = ( entry[ 'Price' ]-sub_val ) / sub_val * 100.
+                entry[ attr_list[ sub_key ] ] = sub_val
+
+        _table_data[ key ] = entry
+
+    return _table_data
+
 # -------------------------------------------------------------------------------------------------
 # Layout
 # -------------------------------------------------------------------------------------------------
@@ -295,55 +332,49 @@ menu = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock' ) )
 # Fetch data
 # -------------------------------------------------------------------------------------------------
 
+port_tickers = _DEFAULT_PORT
+
+# check if port ticker file exists
+if os.path.isfile( _PORT_FILE ):
+    port_ticker_string = open( _PORT_FILE, 'r' ).readline()
+    port_tickers = port_ticker_string.split( ' ' )
+else:
+    open( _PORT_FILE, 'w' ).write( ' '.join( port_tickers ) )
+
 stock_list   = fetch_tickers( port_tickers )
 market_list  = fetch_tickers( mark_tickers )
 stock_histo  = fetch_history( stock_list,  period='1y', interval='1d' )
-market_histo = fetch_history_nocache( market_list, period='5d', interval='5m' )
+market_histo = fetch_history( market_list, period='5d', interval='5m' )
 
 # -------------------------------------------------------------------------------------------------
 # Generate data
 # -------------------------------------------------------------------------------------------------
 
-# data from Ticker.price
-table_data = {}
-for key, val in stock_list.price.items():
-    # initialize
-    entry = {}
-
-    # for each items
-    for sub_key, sub_val in val.items():
-        if sub_key in attr_list:
-            if "Percent" in sub_key: sub_val *= 100.
-            entry[ attr_list[ sub_key ] ] = sub_val
-
-    # compute RSI
-    rsi = ta.RSI( stock_histo['close'][ key ] )[-1]
-    entry[ 'RSI(14)' ] = rsi
-
-    # compute CCI
-    cci = ta.CCI( stock_histo['high'][ key ], stock_histo['low'][ key ], stock_histo['close'][ key ] )[-1]
-    entry[ 'CCI(14)' ] = cci
-    
-    # replace
-    table_data[ key ] = entry
-
-# data from Ticker.summary_detail
-for key, val in stock_list.summary_detail.items():
-    entry = table_data[ key ]
-    for sub_key, sub_val in val.items():
-        if sub_key in attr_list:
-            if "Percent" in sub_key: sub_val *= 100.
-            if sub_key == 'fiftyTwoWeekHigh' or sub_key == 'fiftyTwoWeekLow':
-                sub_val = ( entry[ 'Price' ]-sub_val ) / sub_val * 100.
-            entry[ attr_list[ sub_key ] ] = sub_val
-
-    table_data[ key ] = entry
+# fill data from stock list
+table_data = fill_table( stock_list )
 
 # -------------------------------------------------------------------------------------------------
 # Portfolio
 # -------------------------------------------------------------------------------------------------
 
 if menu == 'Portfolio':
+    # enter ticker list
+    ticker_str = st.text_input( "Ticker list", ' '.join( port_tickers ) )
+    new_port_tickers = ticker_str.split( ' ' )
+    if port_tickers != new_port_tickers:
+        
+        # update ticker file
+        open( _PORT_FILE, 'w' ).write( ticker_str )
+        
+        # clear cache
+        st.experimental_singleton.clear()
+
+        # update table
+        port_tickers = new_port_tickers
+        stock_list   = fetch_tickers( port_tickers )
+        stock_histo  = fetch_history( stock_list,  period='1y', interval='1d' )
+        table_data   = fill_table   ( stock_list )
+
     # sub title
     st.subheader( 'Portfolio' )
     
@@ -497,7 +528,8 @@ if menu == 'Market':
     num_points = st.selectbox( 'Number of data points (x 5m)', [ 30, 60, 120 ] )
     
     # refresh button
-    st.button( 'Refresh' )
+    if st.button( 'Refresh' ):
+        st.experimental_singleton.clear()
 
     for option in mark_tickers:
         market_chart = get_market_chart( option, num_points )
