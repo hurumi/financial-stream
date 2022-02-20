@@ -3,6 +3,7 @@
 #
 
 # disable SSL warnings
+from asyncio.windows_events import NULL
 import urllib3
 urllib3.disable_warnings( urllib3.exceptions.InsecureRequestWarning )
 
@@ -23,7 +24,20 @@ from yahooquery import Ticker
 # Globals
 # -------------------------------------------------------------------------------------------------
 
-mark_tickers = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
+_DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
+_DEFAULT_MARK    = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
+_DEFAULT_BENCH   = [ 'SPY' ]
+_PORT_FILE       = "port.txt"
+
+_RSI_THRESHOLD_L =   30
+_RSI_THRESHOLD_H =   70
+_CCI_THRESHOLD_L = -100
+_CCI_THRESHOLD_H =  100
+
+port_tickers = _DEFAULT_PORT
+mark_tickers = _DEFAULT_MARK
+bnch_tickers = _DEFAULT_BENCH
+
 attr_list = { 
     'regularMarketChangePercent':'Change(%)', 
     'regularMarketPrice':'Price',
@@ -35,14 +49,18 @@ attr_list = {
     'YM=F':'DOW Futures',
     'KRW=X':'USD/KRW',
 }
-
-_DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
-_PORT_FILE       = "port.txt"
-
-_RSI_THRESHOLD_L =   30
-_RSI_THRESHOLD_H =   70
-_CCI_THRESHOLD_L = -100
-_CCI_THRESHOLD_H =  100
+period_div_1y = {
+    '1M': 12,
+    '3M': 4,
+    '6M': 2,
+    '1Y': 1,
+}
+period_div_5d = {
+    '6H' : 20,
+    '12H': 10,
+    '1D' : 5,
+    '5D' : 1,
+}
 
 # -------------------------------------------------------------------------------------------------
 # Functions
@@ -58,7 +76,13 @@ def fetch_tickers( tickers ):
 def fetch_history( _ticker_list, period, interval ):
 
     _hist = _ticker_list.history( period, interval )
-    return _hist 
+    return _hist
+
+@st.experimental_singleton
+def fetch_history_alt( _ticker_list, period, interval ):
+
+    _hist = _ticker_list.history( period, interval )
+    return _hist    
 
 def get_usdkrw():
 
@@ -103,7 +127,7 @@ def get_price_chart( ticker, num_points ):
         x=alt.X( 'Date' ),
         y=alt.Y( 'Price', scale=alt.Scale( zero=False )  ),
         tooltip = [ 'Date', 'Price' ]
-    )
+    ).properties( title = 'Price' )
     return ch
 
 def get_bband_chart( ticker, num_points ):
@@ -161,7 +185,7 @@ def get_rsi_chart( ticker, num_points ):
         x=alt.X( 'Date' ),
         y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
         tooltip = [ 'Date', 'RSI' ]
-    )
+    ).properties( title = 'RSI(14)' )
     source_up = pd.DataFrame( {
     'Date': rsi_hist.index[-num_points:],
     'RSI': _RSI_THRESHOLD_H
@@ -193,7 +217,7 @@ def get_cci_chart( ticker, num_points ):
         x=alt.X( 'Date' ),
         y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
         tooltip = [ 'Date', 'CCI' ]
-    )
+    ).properties( title = 'CCI(14)' )
     source_up = pd.DataFrame( {
     'Date': cci_hist.index[-num_points:],
     'CCI': _CCI_THRESHOLD_H
@@ -239,7 +263,7 @@ def get_macd_charts( ticker, num_points ):
         y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
         tooltip = [ 'Metric', 'Date', 'Value' ],
         color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
-    )
+    ).properties( title = 'MACD' )
     ch2 = alt.Chart( source3 ).mark_bar().encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Hist' ),
@@ -280,6 +304,54 @@ def get_market_chart( ticker, num_points ):
         ).properties( title = f'{attr_list[ option ]} ({delta:.2f}%)' )
 
         return ch+prev
+
+def get_btest_chart( num_points ):
+
+    # get benchmark data
+    _source = []    
+    for ticker in bnch_tickers:
+
+        data = bench_histo[ 'close' ][ ticker ]
+        data /= data[-num_points]
+        data -= 1
+        data *= 100
+
+        _temp = pd.DataFrame( {
+        'Metric': ticker,
+        'Date'  : data.index[-num_points:],
+        'Gain' : data[-num_points:]
+        } )
+        _source.append( _temp )
+
+    # get portfolio data
+    for index, ticker in enumerate( port_tickers ):
+        _temp = stock_histo[ 'close' ][ ticker ]
+        _temp /= _temp[-num_points]
+        _temp -= 1
+        _temp *= 100
+        if index == 0: _data  = _temp
+        else:          _data += _temp
+    _data /= len( port_tickers )
+
+    _temp = pd.DataFrame( {
+        'Metric': 'Portfolio',
+        'Date'  : _data.index[-num_points:],
+        'Gain' : _data[-num_points:]
+    } )
+    _source.append( _temp )
+
+    # concat data
+    source = pd.concat( _source )
+
+    # benchmark chart
+    ch = alt.Chart( source ).mark_line().encode(
+        x=alt.X( 'Date' ),
+        y=alt.Y( 'Gain', scale=alt.Scale( zero=False )  ),
+        tooltip = [ 'Metric', 'Date', 'Gain' ],
+        color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
+    )
+
+    return ch
 
 def fill_table( stock_list ):
 
@@ -332,8 +404,6 @@ menu = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock' ) )
 # Fetch data
 # -------------------------------------------------------------------------------------------------
 
-port_tickers = _DEFAULT_PORT
-
 # check if port ticker file exists
 if os.path.isfile( _PORT_FILE ):
     port_ticker_string = open( _PORT_FILE, 'r' ).readline()
@@ -341,10 +411,12 @@ if os.path.isfile( _PORT_FILE ):
 else:
     open( _PORT_FILE, 'w' ).write( ' '.join( port_tickers ) )
 
-stock_list   = fetch_tickers( port_tickers )
-market_list  = fetch_tickers( mark_tickers )
-stock_histo  = fetch_history( stock_list,  period='1y', interval='1d' )
-market_histo = fetch_history( market_list, period='5d', interval='5m' )
+stock_list   = fetch_tickers    ( port_tickers )
+bench_list   = fetch_tickers    ( bnch_tickers )
+market_list  = fetch_tickers    ( mark_tickers )
+stock_histo  = fetch_history    ( stock_list,  period='1y', interval='1d' )
+bench_histo  = fetch_history_alt( bench_list,  period='1y', interval='1d' )
+market_histo = fetch_history    ( market_list, period='5d', interval='5m' )
 
 # -------------------------------------------------------------------------------------------------
 # Generate data
@@ -375,13 +447,32 @@ if menu == 'Portfolio':
         stock_histo  = fetch_history( stock_list,  period='1y', interval='1d' )
         table_data   = fill_table   ( stock_list )
 
-    # sub title
+    # ---------------------------------------------------------------------------------------------
+    # Summary
+    # ---------------------------------------------------------------------------------------------
+
     st.subheader( 'Portfolio' )
-    
-    # write summary
     df = pd.DataFrame.from_dict( table_data, orient='index' ).sort_values( by='RSI(14)' )
     df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
     st.write( df )
+
+    # ---------------------------------------------------------------------------------------------
+    # Backtest
+    # ---------------------------------------------------------------------------------------------
+
+    with st.expander( "Accumulated Gain (%)" ):
+        # points selector
+        period = st.selectbox( 'Period', [ '1M', '3M', '6M', '1Y' ]  )
+        num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
+        
+        btest_chart = get_btest_chart( num_points )
+        st.altair_chart( btest_chart, use_container_width=True )
+
+    # ---------------------------------------------------------------------------------------------
+    # Oversold & Overbought
+    # ---------------------------------------------------------------------------------------------
+
+    st.subheader( 'Over stocks' )
 
     # range selector
     col1, col2 = st.columns(2)
@@ -406,7 +497,7 @@ if menu == 'Portfolio':
         if check_overbought( val, rsi_H, cci_H ): overbought_data[ key ] = val
 
     # sub title
-    st.subheader( 'Oversold' )
+    st.markdown( '##### Oversold' )
 
     # write noted list
     st.text( f'RSI<{rsi_L} and CCI<{cci_L}' )
@@ -417,7 +508,7 @@ if menu == 'Portfolio':
         st.write( df )
 
     # sub title
-    st.subheader( 'Overbought' )
+    st.markdown( '##### Overbought' )
 
     # write noted list
     st.text( f'RSI>{rsi_H} and CCI>{cci_H}' )
@@ -439,13 +530,12 @@ if menu == 'Stock':
     option = st.selectbox( 'Ticker', port_tickers )
 
     # points selector
-    num_points = st.selectbox( 'Number of data points (x 1d)', [ 30, 60, 120 ] )
+    period = st.selectbox( 'Period', [ '1M', '3M', '6M', '1Y' ]  )
+    num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
 
     # ---------------------------------------------------------------------------------------------
     # price history chart
     # ---------------------------------------------------------------------------------------------
-
-    st.write( f'{num_points}-point Price' )
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -483,8 +573,6 @@ if menu == 'Stock':
     # RSI history chart
     # ---------------------------------------------------------------------------------------------
 
-    st.write( f'{num_points}-point RSI(14)' )
-
     # rsi chart
     rsi_chart = get_rsi_chart( option, num_points )
 
@@ -495,8 +583,6 @@ if menu == 'Stock':
     # CCI history chart
     # ---------------------------------------------------------------------------------------------
 
-    st.write( f'{num_points}-point CCI(14)' )
-
     # rsi chart
     cci_chart = get_cci_chart( option, num_points )
 
@@ -506,8 +592,6 @@ if menu == 'Stock':
     # ---------------------------------------------------------------------------------------------
     # MACD history chart
     # ---------------------------------------------------------------------------------------------
-
-    st.write( f'{num_points}-point MACD' )
     
     # macd chart
     macd_chart, macd_hist_chart = get_macd_charts( option, num_points )
@@ -525,7 +609,8 @@ if menu == 'Market':
     st.subheader( 'Market chart' )
 
     # points selector
-    num_points = st.selectbox( 'Number of data points (x 5m)', [ 30, 60, 120 ] )
+    period = st.selectbox( 'Period', [ '6H', '12H', '1D', '5D' ]  )
+    num_points = int( len( bench_histo[ 'close' ] ) / period_div_5d[ period ] )
     
     # refresh button
     if st.button( 'Refresh' ):
