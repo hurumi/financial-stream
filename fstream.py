@@ -491,7 +491,13 @@ if menu == 'Portfolio':
     with st.expander( "Accumulated Gain (%)" ):
         # points selector
         values = [ '1M', '3M', '6M', '1Y' ]
-        period = st.selectbox( 'Period', values, index=values.index( params['gain_period'] ) )
+
+        if 'gain_period' not in st.session_state:
+            st.session_state.gain_period = True
+            period = st.selectbox( 'Period', values, index=values.index( params['gain_period'] ) )
+        else:
+            period = st.selectbox( 'Period', values )
+
         num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
 
         # update parameter
@@ -509,22 +515,43 @@ if menu == 'Portfolio':
 
     # range selector
     col1, col2 = st.columns(2)
+    rsi_L = _RSI_THRESHOLD_L
+    rsi_H = _RSI_THRESHOLD_H
+    cci_L = _CCI_THRESHOLD_L
+    cci_H = _CCI_THRESHOLD_H
+
     with col1:
         # RSI margin
-        rsi_L, rsi_H = st.select_slider(
-            'Normal RSI Range',
-            options=[ i for i in range( 0, 105, 5 ) ],
-            value = (params['RSI_L'], params['RSI_H']) )
+        if 'rsi_range' not in st.session_state:
+            st.session_state.rsi_range = True
+            rsi_L, rsi_H = st.select_slider(
+                'Normal RSI Range',
+                options=[ i for i in range( 0, 105, 5 ) ],
+                value = (params['RSI_L'], params['RSI_H']) )
+        else:
+            rsi_L, rsi_H = st.select_slider(
+                'Normal RSI Range',
+                options=[ i for i in range( 0, 105, 5 ) ],
+                value = (rsi_L, rsi_H) )
+
         # update parameters
         params['RSI_L'] = rsi_L
         params['RSI_H'] = rsi_H
         save_params()
     with col2:
         # CCI margin
-        cci_L, cci_H = st.select_slider(
-            'Normal CCI Range',
-            options=[ i for i in range( -200, 210, 10 ) ],
-            value = (params['CCI_L'], params['CCI_H']) )
+        if 'cci_range' not in st.session_state:
+            st.session_state.cci_range = True
+            cci_L, cci_H = st.select_slider(
+                'Normal CCI Range',
+                options=[ i for i in range( -200, 210, 10 ) ],
+                value = (params['CCI_L'], params['CCI_H']) )
+        else:
+            cci_L, cci_H = st.select_slider(
+                'Normal CCI Range',
+                options=[ i for i in range( -200, 210, 10 ) ],
+                value = (cci_L, cci_H) )
+
         # update parameters
         params['CCI_L'] = cci_L
         params['CCI_H'] = cci_H
@@ -572,7 +599,13 @@ if menu == 'Stock':
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
-    period = st.selectbox( 'Period', values, index=values.index( params['stock_period'] ) )
+
+    if 'stock_period' not in st.session_state:
+        st.session_state.stock_period = True
+        period = st.selectbox( 'Period', values, index=values.index( params['stock_period'] ) )
+    else:
+        period = st.selectbox( 'Period', values )
+
     num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
 
     # update parameter
@@ -656,7 +689,12 @@ if menu == 'Market':
 
     # points selector
     values = [ '6H', '12H', '1D', '5D' ]
-    period = st.selectbox( 'Period', values, index=values.index( params['market_period'] ) )
+    if 'market_period' not in st.session_state:
+        st.session_state.market_period = True
+        period = st.selectbox( 'Period', values, index=values.index( params['market_period'] ) )
+    else:
+        period = st.selectbox( 'Period', values )
+
     num_points = int( len( bench_histo[ 'close' ] ) / period_div_5d[ period ] )
 
     # update parameter
