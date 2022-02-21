@@ -17,6 +17,7 @@ import pandas as pd
 import altair as alt
 import talib  as ta
 import os
+import json
 
 from yahooquery import Ticker
 
@@ -24,19 +25,15 @@ from yahooquery import Ticker
 # Globals
 # -------------------------------------------------------------------------------------------------
 
-_DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
-_DEFAULT_MARK    = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
-_DEFAULT_BENCH   = [ 'SPY' ]
-_PORT_FILE       = "port.txt"
+_PARAM_FILE      = "param.json"
 
+_DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
+_DEFAULT_MARKET  = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
+_DEFAULT_BENCH   = [ 'SPY' ]
 _RSI_THRESHOLD_L =   30
 _RSI_THRESHOLD_H =   70
 _CCI_THRESHOLD_L = -100
 _CCI_THRESHOLD_H =  100
-
-port_tickers = _DEFAULT_PORT
-mark_tickers = _DEFAULT_MARK
-bnch_tickers = _DEFAULT_BENCH
 
 attr_list = { 
     'regularMarketChangePercent':'Change(%)', 
@@ -60,6 +57,19 @@ period_div_5d = {
     '12H': 10,
     '1D' : 5,
     '5D' : 1,
+}
+params = {
+    'port'   : _DEFAULT_PORT,
+    'market' : _DEFAULT_MARKET,
+    'bench'  : _DEFAULT_BENCH,
+    'RSI_L'  : _RSI_THRESHOLD_L,
+    'RSI_H'  : _RSI_THRESHOLD_H,
+    'CCI_L'  : _CCI_THRESHOLD_L,
+    'CCI_H'  : _CCI_THRESHOLD_H,
+    'market_period': '6H',
+    'gain_period'  : '1M',
+    'stock_period' : '1M',
+    'stock_ticker' : 'SPY',
 }
 
 # -------------------------------------------------------------------------------------------------
@@ -188,7 +198,7 @@ def get_rsi_chart( ticker, num_points ):
     ).properties( title = 'RSI(14)' )
     source_up = pd.DataFrame( {
     'Date': rsi_hist.index[-num_points:],
-    'RSI': _RSI_THRESHOLD_H
+    'RSI': params['RSI_H']
     } )
     up = alt.Chart( source_up ).mark_line().encode(
         x=alt.X( 'Date' ),
@@ -197,7 +207,7 @@ def get_rsi_chart( ticker, num_points ):
     )
     source_dn = pd.DataFrame( {
     'Date': rsi_hist.index[-num_points:],
-    'RSI': _RSI_THRESHOLD_L
+    'RSI': params['RSI_L']
     } )
     dn = alt.Chart( source_dn ).mark_line().encode(
         x=alt.X( 'Date' ),
@@ -220,7 +230,7 @@ def get_cci_chart( ticker, num_points ):
     ).properties( title = 'CCI(14)' )
     source_up = pd.DataFrame( {
     'Date': cci_hist.index[-num_points:],
-    'CCI': _CCI_THRESHOLD_H
+    'CCI': params['CCI_H']
     } )
     up = alt.Chart( source_up ).mark_line().encode(
         x=alt.X( 'Date' ),
@@ -229,7 +239,7 @@ def get_cci_chart( ticker, num_points ):
     )
     source_dn = pd.DataFrame( {
     'Date': cci_hist.index[-num_points:],
-    'CCI': _CCI_THRESHOLD_L
+    'CCI': params['CCI_L']
     } )
     dn = alt.Chart( source_dn ).mark_line().encode(
         x=alt.X( 'Date' ),
@@ -309,7 +319,7 @@ def get_btest_chart( num_points ):
 
     # get benchmark data
     _source = []    
-    for ticker in bnch_tickers:
+    for ticker in params['bench']:
 
         data = bench_histo[ 'close' ][ ticker ]
         data /= data[-num_points]
@@ -324,14 +334,14 @@ def get_btest_chart( num_points ):
         _source.append( _temp )
 
     # get portfolio data
-    for index, ticker in enumerate( port_tickers ):
+    for index, ticker in enumerate( params['port'] ):
         _temp = stock_histo[ 'close' ][ ticker ]
         _temp /= _temp[-num_points]
         _temp -= 1
         _temp *= 100
         if index == 0: _data  = _temp
         else:          _data += _temp
-    _data /= len( port_tickers )
+    _data /= len( params['port'] )
 
     _temp = pd.DataFrame( {
         'Metric': 'Portfolio',
@@ -357,40 +367,61 @@ def fill_table( stock_list ):
 
     # data from Ticker.price
     _table_data = {}
+    
     for key, val in stock_list.price.items():
+        
         # initialize
         entry = {}
 
-        # for each items
-        for sub_key, sub_val in val.items():
-            if sub_key in attr_list:
-                if "Percent" in sub_key: sub_val *= 100.
-                entry[ attr_list[ sub_key ] ] = sub_val
+        try:
+            # for each items
+            for sub_key, sub_val in val.items():
+                if sub_key in attr_list:
+                    if "Percent" in sub_key: sub_val *= 100.
+                    entry[ attr_list[ sub_key ] ] = sub_val
 
-        # compute RSI
-        rsi = ta.RSI( stock_histo['close'][ key ] )[-1]
-        entry[ 'RSI(14)' ] = rsi
+            # compute RSI
+            rsi = ta.RSI( stock_histo['close'][ key ] )[-1]
+            entry[ 'RSI(14)' ] = rsi
 
-        # compute CCI
-        cci = ta.CCI( stock_histo['high'][ key ], stock_histo['low'][ key ], stock_histo['close'][ key ] )[-1]
-        entry[ 'CCI(14)' ] = cci
+            # compute CCI
+            cci = ta.CCI( stock_histo['high'][ key ], stock_histo['low'][ key ], stock_histo['close'][ key ] )[-1]
+            entry[ 'CCI(14)' ] = cci
         
-        # replace
-        _table_data[ key ] = entry
+            # replace
+            _table_data[ key ] = entry
+        except:
+            pass
 
     # data from Ticker.summary_detail
     for key, val in stock_list.summary_detail.items():
+        
+        # initialize
         entry = _table_data[ key ]
-        for sub_key, sub_val in val.items():
-            if sub_key in attr_list:
-                if "Percent" in sub_key: sub_val *= 100.
-                if sub_key == 'fiftyTwoWeekHigh' or sub_key == 'fiftyTwoWeekLow':
-                    sub_val = ( entry[ 'Price' ]-sub_val ) / sub_val * 100.
-                entry[ attr_list[ sub_key ] ] = sub_val
 
-        _table_data[ key ] = entry
+        try:
+            for sub_key, sub_val in val.items():
+                if sub_key in attr_list:
+                    if "Percent" in sub_key: sub_val *= 100.
+                    if sub_key == 'fiftyTwoWeekHigh' or sub_key == 'fiftyTwoWeekLow':
+                        sub_val = ( entry[ 'Price' ]-sub_val ) / sub_val * 100.
+                    entry[ attr_list[ sub_key ] ] = sub_val
+
+            _table_data[ key ] = entry
+        except:
+            pass
 
     return _table_data
+
+def save_params():
+    with open( _PARAM_FILE, 'w' ) as fp:
+        json.dump( params, fp, indent=4 )
+    return
+
+def load_params():
+    with open( _PARAM_FILE, 'r' ) as fp:
+        ret = json.load( fp )
+    return ret
 
 # -------------------------------------------------------------------------------------------------
 # Layout
@@ -404,16 +435,13 @@ menu = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock' ) )
 # Fetch data
 # -------------------------------------------------------------------------------------------------
 
-# check if port ticker file exists
-if os.path.isfile( _PORT_FILE ):
-    port_ticker_string = open( _PORT_FILE, 'r' ).readline()
-    port_tickers = port_ticker_string.split( ' ' )
-else:
-    open( _PORT_FILE, 'w' ).write( ' '.join( port_tickers ) )
+# check if param file exists
+if os.path.isfile( _PARAM_FILE ): params=load_params()
+else: save_params()
 
-stock_list   = fetch_tickers    ( port_tickers )
-bench_list   = fetch_tickers    ( bnch_tickers )
-market_list  = fetch_tickers    ( mark_tickers )
+stock_list   = fetch_tickers    ( params['port'  ] )
+bench_list   = fetch_tickers    ( params['bench' ] )
+market_list  = fetch_tickers    ( params['market'] )
 stock_histo  = fetch_history    ( stock_list,  period='1y', interval='1d' )
 bench_histo  = fetch_history_alt( bench_list,  period='1y', interval='1d' )
 market_histo = fetch_history    ( market_list, period='5d', interval='5m' )
@@ -431,19 +459,20 @@ table_data = fill_table( stock_list )
 
 if menu == 'Portfolio':
     # enter ticker list
-    ticker_str = st.text_input( "Ticker list", ' '.join( port_tickers ) )
+    ticker_str = st.text_input( "Ticker list", ' '.join( params['port'] ) )
     new_port_tickers = ticker_str.split( ' ' )
-    if port_tickers != new_port_tickers:
+    
+    if params['port'] != new_port_tickers:
         
         # update ticker file
-        open( _PORT_FILE, 'w' ).write( ticker_str )
-        
+        params['port'] = new_port_tickers
+        save_params()
+
         # clear cache
         st.experimental_singleton.clear()
 
         # update table
-        port_tickers = new_port_tickers
-        stock_list   = fetch_tickers( port_tickers )
+        stock_list   = fetch_tickers( params['port'] )
         stock_histo  = fetch_history( stock_list,  period='1y', interval='1d' )
         table_data   = fill_table   ( stock_list )
 
@@ -462,8 +491,13 @@ if menu == 'Portfolio':
 
     with st.expander( "Accumulated Gain (%)" ):
         # points selector
-        period = st.selectbox( 'Period', [ '1M', '3M', '6M', '1Y' ]  )
+        values = [ '1M', '3M', '6M', '1Y' ]
+        period = st.selectbox( 'Period', values, index=values.index( params['gain_period'] ) )
         num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
+
+        # update parameter
+        params['gain_period'] = period
+        save_params()
         
         btest_chart = get_btest_chart( num_points )
         st.altair_chart( btest_chart, use_container_width=True )
@@ -481,14 +515,22 @@ if menu == 'Portfolio':
         rsi_L, rsi_H = st.select_slider(
             'Normal RSI Range',
             options=[ i for i in range( 0, 105, 5 ) ],
-            value = (30,70) )
+            value = (params['RSI_L'], params['RSI_H']) )
+        # update parameters
+        params['RSI_L'] = rsi_L
+        params['RSI_H'] = rsi_H
+        save_params()
     with col2:
         # CCI margin
         cci_L, cci_H = st.select_slider(
             'Normal CCI Range',
             options=[ i for i in range( -200, 210, 10 ) ],
-            value = (-100,100) )
-        
+            value = (params['CCI_L'], params['CCI_H']) )
+        # update parameters
+        params['CCI_L'] = cci_L
+        params['CCI_H'] = cci_H
+        save_params()
+
     # generate oversold and overbought data
     oversold_data   = {}
     overbought_data = {}
@@ -527,11 +569,17 @@ if menu == 'Stock':
     st.subheader( 'Stock chart' )
 
     # stock selector
-    option = st.selectbox( 'Ticker', port_tickers )
+    option = st.selectbox( 'Ticker', params['port'], index=params['port'].index( params['stock_ticker'] ) )
 
     # points selector
-    period = st.selectbox( 'Period', [ '1M', '3M', '6M', '1Y' ]  )
+    values = [ '1M', '3M', '6M', '1Y' ]
+    period = st.selectbox( 'Period', values, index=values.index( params['stock_period'] ) )
     num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
+
+    # update parameter
+    params['stock_ticker'] = option
+    params['stock_period'] = period
+    save_params()
 
     # ---------------------------------------------------------------------------------------------
     # price history chart
@@ -609,13 +657,18 @@ if menu == 'Market':
     st.subheader( 'Market chart' )
 
     # points selector
-    period = st.selectbox( 'Period', [ '6H', '12H', '1D', '5D' ]  )
+    values = [ '6H', '12H', '1D', '5D' ]
+    period = st.selectbox( 'Period', values, index=values.index( params['market_period'] ) )
     num_points = int( len( bench_histo[ 'close' ] ) / period_div_5d[ period ] )
+
+    # update parameter
+    params['market_period'] = period
+    save_params()
     
     # refresh button
     if st.button( 'Refresh' ):
         st.experimental_singleton.clear()
 
-    for option in mark_tickers:
+    for option in params['market']:
         market_chart = get_market_chart( option, num_points )
         st.altair_chart( market_chart, use_container_width=True )

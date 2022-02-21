@@ -1,0 +1,26 @@
+{
+    "port": [
+        "MSFT",
+        "AAPL",
+        "SPLG",
+        "QQQ",
+        "JEPI"
+    ],
+    "market": [
+        "NQ=F",
+        "ES=F",
+        "YM=F",
+        "KRW=X"
+    ],
+    "bench": [
+        "SPY"
+    ],
+    "RSI_L": 35,
+    "RSI_H": 70,
+    "CCI_L": -100,
+    "CCI_H": 100,
+    "market_period": "6H",
+    "gain_period": "1M",
+    "stock_period": "3M",
+    "stock_ticker": "JEPI"
+}
