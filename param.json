@@ -15,7 +15,7 @@
     "bench": [
         "SPY"
     ],
-    "RSI_L": 35,
+    "RSI_L": 30,
     "RSI_H": 70,
     "CCI_L": -100,
     "CCI_H": 100,
