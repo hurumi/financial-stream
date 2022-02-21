@@ -69,7 +69,6 @@ params = {
     'market_period': '6H',
     'gain_period'  : '1M',
     'stock_period' : '1M',
-    'stock_ticker' : 'SPY',
 }
 
 # -------------------------------------------------------------------------------------------------
@@ -569,11 +568,7 @@ if menu == 'Stock':
     st.subheader( 'Stock chart' )
 
     # stock selector
-    if params['stock_ticker'] in params['port']:
-        current = params['port'].index( params['stock_ticker'] )
-    else:
-        current = 0
-    option = st.selectbox( 'Ticker', params['port'], index=current )
+    option = st.selectbox( 'Ticker', params['port'] )
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
@@ -581,7 +576,6 @@ if menu == 'Stock':
     num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
 
     # update parameter
-    params['stock_ticker'] = option
     params['stock_period'] = period
     save_params()
 

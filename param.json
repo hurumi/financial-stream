@@ -21,6 +21,5 @@
     "CCI_H": 100,
     "market_period": "6H",
     "gain_period": "1M",
-    "stock_period": "3M",
-    "stock_ticker": "MSFT"
+    "stock_period": "1M"
 }
