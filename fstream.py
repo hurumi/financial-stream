@@ -569,7 +569,11 @@ if menu == 'Stock':
     st.subheader( 'Stock chart' )
 
     # stock selector
-    option = st.selectbox( 'Ticker', params['port'], index=params['port'].index( params['stock_ticker'] ) )
+    if params['stock_ticker'] in params['port']:
+        current = params['port'].index( params['stock_ticker'] )
+    else:
+        current = 0
+    option = st.selectbox( 'Ticker', params['port'], index=current )
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
