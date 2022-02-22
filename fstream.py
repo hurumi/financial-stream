@@ -4,6 +4,7 @@
 
 # disable SSL warnings
 from asyncio.windows_events import NULL
+from numpy import save
 import urllib3
 urllib3.disable_warnings( urllib3.exceptions.InsecureRequestWarning )
 
@@ -423,12 +424,45 @@ def load_params():
     return ret
 
 # -------------------------------------------------------------------------------------------------
+# Functions (Callbacks)
+# -------------------------------------------------------------------------------------------------
+
+def cb_ticker_list():
+    params[ 'port' ] = st.session_state.tickerlist.split( ' ' )
+    save_params()
+    st.experimental_singleton.clear()   # clear cache
+
+def cb_gain_period():
+    params[ 'gain_period' ] = st.session_state.gainperiod
+    save_params()
+
+def cb_rsi_margin():
+    params[ 'RSI_L' ] = st.session_state.rsimargin[0]
+    params[ 'RSI_H' ] = st.session_state.rsimargin[1]
+    save_params()
+
+def cb_cci_margin():
+    params[ 'CCI_L' ] = st.session_state.ccimargin[0]
+    params[ 'CCI_H' ] = st.session_state.ccimargin[1]
+    save_params()
+
+def cb_stock_period():
+    params[ 'stock_period' ] = st.session_state.stockperiod
+    save_params()
+
+def cb_market_period():
+    params[ 'market_period' ] = st.session_state.marketperiod
+    save_params()
+
+# -------------------------------------------------------------------------------------------------
 # Layout
 # -------------------------------------------------------------------------------------------------
 
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
-menu = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock' ) )
+menu   = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock' ) )
+button = st.sidebar.button( "Clear Cache" )
+if button: st.experimental_singleton.clear() 
 
 # -------------------------------------------------------------------------------------------------
 # Fetch data
@@ -458,7 +492,10 @@ table_data = fill_table( stock_list )
 
 if menu == 'Portfolio':
     # enter ticker list
-    ticker_str = st.text_input( "Ticker list", ' '.join( params['port'] ) )
+    ticker_str = st.text_input( "Ticker list", ' '.join( params['port'] ),
+                                key='tickerlist',
+                                on_change=cb_ticker_list )
+
     new_port_tickers = ticker_str.split( ' ' )
     
     if params['port'] != new_port_tickers:
@@ -491,12 +528,10 @@ if menu == 'Portfolio':
     with st.expander( "Accumulated Gain (%)" ):
         # points selector
         values = [ '1M', '3M', '6M', '1Y' ]
-
-        if 'gain_period' not in st.session_state:
-            st.session_state.gain_period = True
-            period = st.selectbox( 'Period', values, index=values.index( params['gain_period'] ) )
-        else:
-            period = st.selectbox( 'Period', values )
+        period = st.selectbox( 'Period', values, 
+                                index=values.index( params['gain_period'] ),
+                                key='gainperiod',
+                                on_change=cb_gain_period )
 
         num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
 
@@ -515,24 +550,14 @@ if menu == 'Portfolio':
 
     # range selector
     col1, col2 = st.columns(2)
-    rsi_L = _RSI_THRESHOLD_L
-    rsi_H = _RSI_THRESHOLD_H
-    cci_L = _CCI_THRESHOLD_L
-    cci_H = _CCI_THRESHOLD_H
-
     with col1:
         # RSI margin
-        if 'rsi_range' not in st.session_state:
-            st.session_state.rsi_range = True
-            rsi_L, rsi_H = st.select_slider(
-                'Normal RSI Range',
-                options=[ i for i in range( 0, 105, 5 ) ],
-                value = (params['RSI_L'], params['RSI_H']) )
-        else:
-            rsi_L, rsi_H = st.select_slider(
-                'Normal RSI Range',
-                options=[ i for i in range( 0, 105, 5 ) ],
-                value = (rsi_L, rsi_H) )
+        rsi_L, rsi_H = st.select_slider(
+            'Normal RSI Range',
+            options=[ i for i in range( 0, 105, 5 ) ],
+            value = (params['RSI_L'], params['RSI_H']),
+            key='rsimargin',
+            on_change=cb_rsi_margin )
 
         # update parameters
         params['RSI_L'] = rsi_L
@@ -540,17 +565,12 @@ if menu == 'Portfolio':
         save_params()
     with col2:
         # CCI margin
-        if 'cci_range' not in st.session_state:
-            st.session_state.cci_range = True
-            cci_L, cci_H = st.select_slider(
-                'Normal CCI Range',
-                options=[ i for i in range( -200, 210, 10 ) ],
-                value = (params['CCI_L'], params['CCI_H']) )
-        else:
-            cci_L, cci_H = st.select_slider(
-                'Normal CCI Range',
-                options=[ i for i in range( -200, 210, 10 ) ],
-                value = (cci_L, cci_H) )
+        cci_L, cci_H = st.select_slider(
+            'Normal CCI Range',
+            options=[ i for i in range( -200, 210, 10 ) ],
+            value = (params['CCI_L'], params['CCI_H']),
+            key='ccimargin',
+            on_change=cb_cci_margin )
 
         # update parameters
         params['CCI_L'] = cci_L
@@ -599,12 +619,10 @@ if menu == 'Stock':
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
-
-    if 'stock_period' not in st.session_state:
-        st.session_state.stock_period = True
-        period = st.selectbox( 'Period', values, index=values.index( params['stock_period'] ) )
-    else:
-        period = st.selectbox( 'Period', values )
+    period = st.selectbox( 'Period', values, 
+                            index=values.index( params['stock_period'] ),
+                            key='stockperiod',
+                            on_change=cb_stock_period )
 
     num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
 
@@ -689,11 +707,10 @@ if menu == 'Market':
 
     # points selector
     values = [ '6H', '12H', '1D', '5D' ]
-    if 'market_period' not in st.session_state:
-        st.session_state.market_period = True
-        period = st.selectbox( 'Period', values, index=values.index( params['market_period'] ) )
-    else:
-        period = st.selectbox( 'Period', values )
+    period = st.selectbox( 'Period', values, 
+                            index=values.index( params['market_period'] ), 
+                            key="marketperiod", 
+                            on_change=cb_market_period )
 
     num_points = int( len( bench_histo[ 'close' ] ) / period_div_5d[ period ] )
 
