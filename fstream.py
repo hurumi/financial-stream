@@ -71,6 +71,22 @@ params = {
     'gain_period'  : '1M',
     'stock_period' : '1M',
 }
+bullish_pattern = [ 
+    'CDLHAMMER', 
+    'CDLINVERTEDHAMMER',
+    'CDLENGULFING',
+    'CDLPIERCING',
+    'CDLMORNINGSTAR',
+    'CDL3WHITESOLDIERS'
+]
+bearish_pattern = [ 
+    'CDLHANGINGMAN', 
+    'CDLSHOOTINGSTAR',
+    'CDLENGULFING',
+    'CDLEVENINGSTAR',
+    'CDL3BLACKCROWS',
+    'CDLDARKCLOUDCOVER'
+]
 
 # -------------------------------------------------------------------------------------------------
 # Functions
@@ -363,6 +379,32 @@ def get_btest_chart( num_points ):
 
     return ch
 
+def get_pattern_chart( bullish_histo, bearish_histo ):
+
+    domain = [ 'Bullish', 'Bearish' ]
+    range_ = [ 'green', 'red' ]
+
+    source1 = pd.DataFrame( {
+    'Signal': 'Bullish',
+    'Date'  : bullish_histo.index,
+    'Value' : bullish_histo
+    } )
+    source2 = pd.DataFrame( {
+    'Signal': 'Bearish',
+    'Date'  : bearish_histo.index,
+    'Value' : bearish_histo
+    } )
+    source = pd.concat( [ source1, source2 ] )
+
+    ch = alt.Chart( source ).mark_circle( size=150 ).encode(
+        x=alt.X( 'Date' ),
+        y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
+        tooltip = [ 'Signal', 'Date', 'Value' ],
+        color = alt.Color( 'Signal', legend=alt.Legend( orient="top-left" ), scale=alt.Scale(domain=domain, range=range_) )
+    )
+
+    return ch
+
 def fill_table( stock_list ):
 
     # data from Ticker.price
@@ -460,7 +502,7 @@ def cb_market_period():
 
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
-menu   = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock' ) )
+menu   = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock', 'Pattern' ) )
 button = st.sidebar.button( "Clear Cache" )
 if button: st.experimental_singleton.clear() 
 
@@ -533,7 +575,7 @@ if menu == 'Portfolio':
                                 key='gainperiod',
                                 on_change=cb_gain_period )
 
-        num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
+        num_points = int( len( bench_histo['close'][ params['bench'][0] ] ) / period_div_1y[ period ] )
 
         # update parameter
         params['gain_period'] = period
@@ -615,7 +657,7 @@ if menu == 'Stock':
     st.subheader( 'Stock chart' )
 
     # stock selector
-    option = st.selectbox( 'Ticker', params['port'] )
+    option = st.selectbox( 'Ticker', params['port'], key='stockticker' )
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
@@ -624,7 +666,7 @@ if menu == 'Stock':
                             key='stockperiod',
                             on_change=cb_stock_period )
 
-    num_points = int( len( bench_histo[ 'close' ] ) / period_div_1y[ period ] )
+    num_points = int( len( stock_histo['close'][option] ) / period_div_1y[ period ] )
 
     # update parameter
     params['stock_period'] = period
@@ -712,7 +754,7 @@ if menu == 'Market':
                             key="marketperiod", 
                             on_change=cb_market_period )
 
-    num_points = int( len( bench_histo[ 'close' ] ) / period_div_5d[ period ] )
+    num_points = int( len( market_histo['close'][ params['market'][0] ] ) / period_div_5d[ period ] )
 
     # update parameter
     params['market_period'] = period
@@ -725,3 +767,101 @@ if menu == 'Market':
     for option in params['market']:
         market_chart = get_market_chart( option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
+
+# -------------------------------------------------------------------------------------------------
+# Pattern
+# -------------------------------------------------------------------------------------------------
+
+if menu == 'Pattern':
+
+    # limit period range (1 Month)
+    num_points = int( len( stock_histo['close'][params['port'][0]] ) / period_div_1y['1M'] )
+
+    # ---------------------------------------------------------------------------------------------
+    # Pattern logs for all portfolio stocks
+    # ---------------------------------------------------------------------------------------------
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # bullish patterns
+        st.subheader( 'Bullish patterns' )
+        _temp        = []
+        for option in params['port']:
+            for method in bullish_pattern:
+                data = getattr( ta, method )( stock_histo['open'][option][-num_points:], 
+                                    stock_histo['high'][option][-num_points:], 
+                                    stock_histo['low'][option][-num_points:], 
+                                    stock_histo['close'][option][-num_points:] )
+                for d, v in data.items():
+                    if v>0: _temp.append( f'{d}: [{option:5}] {method}' )
+        _temp.sort()
+        for elem in _temp: st.text( elem )
+        
+    with col2:
+        # bearish patterns
+        st.subheader( 'Bearish patterns' )
+        _temp = []        
+        for option in params['port']:
+            for method in bearish_pattern:
+                data = getattr( ta, method )( stock_histo['open'][option][-num_points:], 
+                                    stock_histo['high'][option][-num_points:], 
+                                    stock_histo['low'][option][-num_points:], 
+                                    stock_histo['close'][option][-num_points:] )
+                for d, v in data.items():
+                    if v<0: _temp.append( f'{d}: [{option:5}] {method}' )
+        _temp.sort()
+        for elem in _temp: st.text( elem )
+
+    # ---------------------------------------------------------------------------------------------
+    # Pattern chart for selected stock
+    # ---------------------------------------------------------------------------------------------
+
+    # sub title
+    st.subheader( 'Pattern graph' )
+
+    # stock selector
+    option = st.selectbox( 'Ticker', params['port'], key='stockticker' )
+
+    # bullish data
+    _bullish_histo = stock_histo['close'][option][-num_points:].copy()    
+    for idx, method in enumerate( bullish_pattern ):
+        if idx == 0:
+            data = getattr( ta, method )( stock_histo['open'][option][-num_points:], 
+                                stock_histo['high'][option][-num_points:], 
+                                stock_histo['low'][option][-num_points:], 
+                                stock_histo['close'][option][-num_points:] )
+        else:
+            data += getattr( ta, method )( stock_histo['open'][option][-num_points:], 
+                                stock_histo['high'][option][-num_points:], 
+                                stock_histo['low'][option][-num_points:], 
+                                stock_histo['close'][option][-num_points:] )
+    
+    _bullish_histo[ data <= 0 ] = 0
+    bullish_histo = _bullish_histo[ _bullish_histo > 0 ]
+
+    # bearish data
+    _bearish_histo = stock_histo['close'][option][-num_points:].copy()    
+    for idx, method in enumerate( bearish_pattern ):
+        if idx == 0:
+            data = getattr( ta, method )( stock_histo['open'][option][-num_points:], 
+                                stock_histo['high'][option][-num_points:], 
+                                stock_histo['low'][option][-num_points:], 
+                                stock_histo['close'][option][-num_points:] )
+        else:
+            data += getattr( ta, method )( stock_histo['open'][option][-num_points:], 
+                                stock_histo['high'][option][-num_points:], 
+                                stock_histo['low'][option][-num_points:], 
+                                stock_histo['close'][option][-num_points:] )
+    
+    _bearish_histo[ data >= 0 ] = 0
+    bearish_histo = _bearish_histo[ _bearish_histo > 0 ]
+
+    # price chart
+    price_chart = get_price_chart( option, num_points )
+
+    # bullish chart
+    price_chart += get_pattern_chart( bullish_histo, bearish_histo )
+
+    # draw
+    st.altair_chart( price_chart, use_container_width=True )
