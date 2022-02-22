@@ -4,7 +4,8 @@
         "AAPL",
         "SPLG",
         "QQQ",
-        "JEPI"
+        "JEPI",
+        "TSLA"
     ],
     "market": [
         "^IXIC",
@@ -25,7 +26,7 @@
     "RSI_H": 70,
     "CCI_L": -100,
     "CCI_H": 100,
-    "market_period": "6H",
+    "market_period": "12H",
     "gain_period": "1M",
-    "stock_period": "1M"
+    "stock_period": "3M"
 }
