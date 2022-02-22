@@ -396,7 +396,7 @@ def get_pattern_chart( bullish_histo, bearish_histo ):
     } )
     source = pd.concat( [ source1, source2 ] )
 
-    ch = alt.Chart( source ).mark_circle( size=150 ).encode(
+    ch = alt.Chart( source ).mark_circle( size=100 ).encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
         tooltip = [ 'Signal', 'Date', 'Value' ],
@@ -781,11 +781,12 @@ if menu == 'Pattern':
     # Pattern logs for all portfolio stocks
     # ---------------------------------------------------------------------------------------------
 
+    st.subheader( 'Pattern logs (1M)' )
+    
     col1, col2 = st.columns(2)
-
     with col1:
         # bullish patterns
-        st.subheader( 'Bullish patterns' )
+        st.markdown( '##### Bullish patterns' )
         _temp        = []
         for option in params['port']:
             for method in bullish_pattern:
@@ -800,7 +801,7 @@ if menu == 'Pattern':
         
     with col2:
         # bearish patterns
-        st.subheader( 'Bearish patterns' )
+        st.markdown( '##### Bearish patterns' )
         _temp = []        
         for option in params['port']:
             for method in bearish_pattern:
@@ -820,8 +821,13 @@ if menu == 'Pattern':
     # sub title
     st.subheader( 'Pattern graph' )
 
-    # stock selector
+    # stock selector (share key with stock menu)
     option = st.selectbox( 'Ticker', params['port'], key='stockticker' )
+
+    # points selector
+    values = [ '1M', '3M', '6M', '1Y' ]
+    period = st.selectbox( 'Period', values )
+    num_points = int( len( stock_histo['close'][option] ) / period_div_1y[ period ] )
 
     # bullish data
     _bullish_histo = stock_histo['close'][option][-num_points:].copy()    
