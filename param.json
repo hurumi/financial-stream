@@ -7,6 +7,12 @@
         "JEPI"
     ],
     "market": [
+        "^IXIC",
+        "^GSPC",
+        "^DJI",
+        "KRW=X"
+    ],
+    "future": [
         "NQ=F",
         "ES=F",
         "YM=F",

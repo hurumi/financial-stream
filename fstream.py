@@ -29,7 +29,8 @@ from yahooquery import Ticker
 _PARAM_FILE      = "param.json"
 
 _DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
-_DEFAULT_MARKET  = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
+_DEFAULT_MARKET  = [ '^IXIC', '^GSPC', '^DJI', 'KRW=X' ]
+_DEFAULT_FUTURE  = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
 _DEFAULT_BENCH   = [ 'SPY' ]
 _RSI_THRESHOLD_L =   30
 _RSI_THRESHOLD_H =   70
@@ -42,9 +43,12 @@ attr_list = {
     'trailingPE':'P/E',
     'fiftyTwoWeekHigh':'52W_H(%)',
     'fiftyTwoWeekLow':'52W_L(%)',
+    '^IXIC':'NASDAQ Composite',
+    '^GSPC':'S&P 500',
+    '^DJI':'DOW Jones Average',    
     'NQ=F':'NASDAQ Futures',
     'ES=F':'S&P 500 Futures',
-    'YM=F':'DOW Futures',
+    'YM=F':'DOW Jones Futures',
     'KRW=X':'USD/KRW',
 }
 period_div_1y = {
@@ -62,6 +66,7 @@ period_div_5d = {
 params = {
     'port'   : _DEFAULT_PORT,
     'market' : _DEFAULT_MARKET,
+    'future' : _DEFAULT_FUTURE,
     'bench'  : _DEFAULT_BENCH,
     'RSI_L'  : _RSI_THRESHOLD_L,
     'RSI_H'  : _RSI_THRESHOLD_H,
@@ -116,6 +121,11 @@ def get_usdkrw():
     exchange_rate = _temp.json()
 
     return exchange_rate['rates']['KRW']
+
+def is_market_open():
+    _temp = Ticker( 'aapl', verify=False )
+    if _temp.price['aapl']['marketState'] == 'REGULAR': return True
+    return False
 
 def check_oversold( entry, rsi_L, cci_L ):
 
@@ -514,9 +524,17 @@ if button: st.experimental_singleton.clear()
 if os.path.isfile( _PARAM_FILE ): params=load_params()
 else: save_params()
 
+# portfolio and benchmark
 stock_list   = fetch_tickers    ( params['port'  ] )
 bench_list   = fetch_tickers    ( params['bench' ] )
-market_list  = fetch_tickers    ( params['market'] )
+
+# according to market open
+if is_market_open():
+    market_list = fetch_tickers( params['market'] )
+else:
+    market_list = fetch_tickers( params['future'] )
+
+# historical prices
 stock_histo  = fetch_history    ( stock_list,  period='1y', interval='1d' )
 bench_histo  = fetch_history_alt( bench_list,  period='1y', interval='1d' )
 market_histo = fetch_history    ( market_list, period='5d', interval='5m' )
@@ -754,7 +772,13 @@ if menu == 'Market':
                             key="marketperiod", 
                             on_change=cb_market_period )
 
-    num_points = int( len( market_histo['close'][ params['market'][0] ] ) / period_div_5d[ period ] )
+    # check market open
+    if is_market_open():
+        ticker_list = params[ 'market' ]
+    else:
+        ticker_list = params[ 'future' ]
+
+    num_points = int( len( market_histo['close'][ ticker_list[0] ] ) / period_div_5d[ period ] )
 
     # update parameter
     params['market_period'] = period
@@ -764,7 +788,7 @@ if menu == 'Market':
     if st.button( 'Refresh' ):
         st.experimental_singleton.clear()
 
-    for option in params['market']:
+    for option in ticker_list:
         market_chart = get_market_chart( option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
 
