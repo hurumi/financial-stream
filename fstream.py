@@ -174,7 +174,7 @@ def get_price_chart( st_list, st_hist, ticker, num_points ):
 
         # base
         base = alt.Chart(source).encode(
-            x = alt.X( 'Date' ),
+            x = alt.X( 'Date:T' ),
             color=open_close_color
         )
 
@@ -412,7 +412,7 @@ def get_btest_chart( num_points ):
 def get_pattern_chart( bullish_histo, bearish_histo ):
 
     domain = [ 'Bullish', 'Bearish' ]
-    range_ = [ 'green', 'red' ]
+    range_ = [ 'blue', 'magenta' ]
 
     source1 = pd.DataFrame( {
     'Signal': 'Bullish',
@@ -426,7 +426,7 @@ def get_pattern_chart( bullish_histo, bearish_histo ):
     } )
     source = pd.concat( [ source1, source2 ] )
 
-    ch = alt.Chart( source ).mark_circle( size=100 ).encode(
+    ch = alt.Chart( source ).mark_point( size=100 ).encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
         tooltip = [ 'Signal', 'Date', 'Value' ],
