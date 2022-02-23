@@ -19,6 +19,7 @@ import altair as alt
 import talib  as ta
 import os
 import json
+import datetime as dt
 
 from yahooquery import Ticker
 
@@ -53,17 +54,15 @@ attr_list = {
     'fiftyTwoWeekHigh':'52W_H(%)',
     'fiftyTwoWeekLow':'52W_L(%)',
 }
-period_div_1y = {
-    '1M': 12,
-    '3M': 4,
-    '6M': 2,
-    '1Y': 1,
-}
-period_div_5d = {
-    '6H' : 20,
-    '12H': 10,
-    '1D' : 5,
-    '5D' : 1,
+period_delta = {
+    '1M' : [  30, 0 ],
+    '3M' : [  90, 0 ],
+    '6M' : [ 180, 0 ],
+    '1Y' : [ 365, 0 ],
+    '6H' : [  0,  6 ],
+    '12H': [  0, 12 ],
+    '1D' : [  1,  0 ],
+    '5D' : [  5,  0 ],
 }
 params = {
     'port'   : _DEFAULT_PORT,
@@ -533,6 +532,15 @@ def load_params():
         ret = json.load( fp )
     return ret
 
+def get_num_points( index, delta ):
+
+    last = index[-1]
+    d    = dt.timedelta( days  = delta[0] )
+    h    = dt.timedelta( hours = delta[1] )
+    num_points = len( index [ index > ( last - d - h ) ] )
+
+    return num_points
+
 # -------------------------------------------------------------------------------------------------
 # Functions (Callbacks)
 # -------------------------------------------------------------------------------------------------
@@ -655,7 +663,7 @@ if menu == 'Portfolio':
                                 key='gainperiod',
                                 on_change=cb_gain_period )
 
-        num_points = int( len( bench_hist['close'][ params['bench'][0] ] ) / period_div_1y[ period ] )
+        num_points = get_num_points( bench_hist['close'][ params['bench'][0] ].index, period_delta[period] )
 
         # draw chart
         btest_chart = get_btest_chart( stock_hist, bench_hist, num_points )
@@ -734,7 +742,7 @@ if menu == 'Stock':
                             key='stockperiod',
                             on_change=cb_stock_period )
 
-    num_points = int( len( stock_hist['close'][option] ) / period_div_1y[ period ] )
+    num_points = get_num_points( stock_hist['close'][option].index, period_delta[period] )
 
     # ---------------------------------------------------------------------------------------------
     # price history chart
@@ -826,7 +834,8 @@ if menu == 'Market':
         ticker_list = params[ 'future' ]
 
     for option in ticker_list:
-        num_points = int( len( market_hist['close'][ option ] ) / period_div_5d[ period ] )
+        num_points = get_num_points( market_hist['close'][option].index, period_delta[period] )
+        print( option, num_points, period_delta[period] )
         market_chart = get_price_chart( market_list, market_hist, option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
 
@@ -837,7 +846,7 @@ if menu == 'Market':
 if menu == 'Pattern':
 
     # limit period range (1 Month)
-    num_points = int( len( stock_hist['close'][params['port'][0]] ) / period_div_1y['1M'] )
+    num_points = get_num_points( stock_hist['close'][params['port'][0]].index, period_delta['1M'] )
 
     # ---------------------------------------------------------------------------------------------
     # Pattern logs for all portfolio stocks
@@ -893,7 +902,7 @@ if menu == 'Pattern':
                             key="patternperiod",
                             on_change=cb_pattern_period )
 
-    num_points = int( len( stock_hist['close'][option] ) / period_div_1y[ period ] )
+    num_points = get_num_points( stock_hist['close'][option].index, period_delta[period] )
 
     # bullish data
     _bullish_histo = stock_hist['close'][option][-num_points:].copy()    
