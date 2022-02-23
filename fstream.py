@@ -561,10 +561,6 @@ if menu == 'Portfolio':
                                 key='tickerlist',
                                 on_change=cb_ticker_list )
 
-    # refresh button
-    if st.button( 'Refresh' ):
-        st.experimental_singleton.clear()
-
     # ---------------------------------------------------------------------------------------------
     # Summary
     # ---------------------------------------------------------------------------------------------
@@ -757,10 +753,6 @@ if menu == 'Market':
         ticker_list = params[ 'future' ]
 
     num_points = int( len( market_hist['close'][ ticker_list[0] ] ) / period_div_5d[ period ] )
-
-    # refresh button
-    if st.button( 'Refresh' ):
-        st.experimental_singleton.clear()
 
     for option in ticker_list:
         market_chart = get_price_chart( market_list, market_hist, option, num_points )
