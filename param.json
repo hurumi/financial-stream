@@ -26,7 +26,7 @@
     "RSI_H": 70,
     "CCI_L": -100,
     "CCI_H": 100,
-    "market_period": "12H",
+    "market_period": "1D",
     "gain_period": "1M",
     "stock_period": "3M",
     "pattern_period": "3M"

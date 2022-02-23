@@ -109,13 +109,13 @@ def fetch_tickers( tickers ):
 @st.experimental_singleton
 def fetch_history( _ticker_list, period, interval ):
 
-    _hist = _ticker_list.history( period, interval )
+    _hist = _ticker_list.history( period, interval, adj_timezone=False )
     return _hist
 
 @st.experimental_singleton
 def fetch_history_alt( _ticker_list, period, interval ):
 
-    _hist = _ticker_list.history( period, interval )
+    _hist = _ticker_list.history( period, interval, adj_timezone=False )
     return _hist
 
 def get_usdkrw():
@@ -158,8 +158,6 @@ def highlight_negative(s):
 def get_price_chart( st_list, st_hist, ticker, num_points ):
 
         hist = st_hist[ 'close' ][ ticker ]
-
-        print( hist.dtypes )
 
         source1 = pd.DataFrame( {
             'Date': hist.index[-num_points:],
@@ -827,9 +825,8 @@ if menu == 'Market':
     else:
         ticker_list = params[ 'future' ]
 
-    num_points = int( len( market_hist['close'][ ticker_list[0] ] ) / period_div_5d[ period ] )
-
     for option in ticker_list:
+        num_points = int( len( market_hist['close'][ option ] ) / period_div_5d[ period ] )
         market_chart = get_price_chart( market_list, market_hist, option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
 
