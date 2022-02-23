@@ -157,16 +157,47 @@ def highlight_negative(s):
 def get_price_chart( st_list, st_hist, ticker, num_points ):
 
         hist = st_hist[ 'close' ][ ticker ]
+
+        # make source
         source = pd.DataFrame( {
-        'Date': hist.index[-num_points:],
-        'Price': hist[-num_points:]
+            'Date':  hist.index[-num_points:],
+            'High':  st_hist['high'][ticker][-num_points:],
+            'Low':   st_hist['low'][ticker][-num_points:],
+            'Open':  st_hist['open'][ticker][-num_points:],
+            'Close': st_hist['close'][ticker][-num_points:]
         } )
-        ch = alt.Chart( source ).mark_line().encode(
-            x=alt.X( 'Date' ),
-            y=alt.Y( 'Price', scale=alt.Scale( zero=False )  ),
-            tooltip = [ 'Date', 'Price' ]
+
+        # conditional color for bar
+        open_close_color = alt.condition("datum.Open <= datum.Close",
+                                          alt.value( "#06982d" ),
+                                          alt.value( "#ae1325" ) )
+
+        # base
+        base = alt.Chart(source).encode(
+            x = alt.X( 'Date' ),
+            color=open_close_color
         )
 
+        # rule
+        rule = base.mark_rule().encode(
+            alt.Y(
+                'Low:Q',
+                title = 'Price',
+                scale = alt.Scale( zero=False ),
+            ),
+            alt.Y2('High:Q')
+        )
+
+        # bar
+        bar = base.mark_bar().encode(
+            alt.Y('Open:Q'),
+            alt.Y2('Close:Q')
+        )
+
+        # final candlestick
+        ch = rule + bar
+
+        # draw previous close line
         prev_close = st_list.price[ ticker ][ 'regularMarketPreviousClose' ]
         source = pd.DataFrame( {
         'Date': hist.index[-num_points:],
@@ -182,7 +213,7 @@ def get_price_chart( st_list, st_hist, ticker, num_points ):
             tooltip = [ 'Date', 'Price' ]
         ).properties( title = f'{title}: {prev_close:.2f} ({delta:.2f}%)' )
 
-        return ch+prev
+        return ch+prev        
 
 def get_bband_chart( ticker, num_points ):
 
