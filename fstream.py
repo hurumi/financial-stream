@@ -404,32 +404,32 @@ def get_btest_chart( po_hist, be_hist, num_points ):
     _source = []    
     for ticker in params['bench']:
 
-        data = be_hist[ 'close' ][ ticker ]
-        data /= data[-num_points]
-        data -= 1
-        data *= 100
+        elem = be_hist[ 'close' ][ ticker ].copy()
+        elem /= elem[-num_points]
+        elem -= 1
+        elem *= 100
 
         _temp = pd.DataFrame( {
             'Metric': ticker,
-            'Date'  : data.index[-num_points:],
-            'Gain' : data[-num_points:].values
+            'Date'  : elem.index[-num_points:],
+            'Gain' : elem[-num_points:].values
         } )
         _source.append( _temp )
 
     # get portfolio data
     for index, ticker in enumerate( params['port'] ):
-        _temp = po_hist[ 'close' ][ ticker ]
-        _temp /= _temp[-num_points]
-        _temp -= 1
-        _temp *= 100
-        if index == 0: _data  = _temp
-        else:          _data += _temp
-    _data /= len( params['port'] )
+        elem = po_hist[ 'close' ][ ticker ].copy()
+        elem /= elem[-num_points]
+        elem -= 1
+        elem *= 100
+        if index == 0: sum  = elem
+        else:          sum += elem
+    sum /= len( params['port'] )
 
     _temp = pd.DataFrame( {
         'Metric': 'Portfolio',
-        'Date'  : _data.index[-num_points:],
-        'Gain' : _data[-num_points:].values
+        'Date'  : sum.index[-num_points:],
+        'Gain' : sum[-num_points:].values
     } )
     _source.append( _temp )
 
