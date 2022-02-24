@@ -637,16 +637,20 @@ table_data = fill_table( stock_list )
 
 if menu == 'Portfolio':
 
+    st.subheader( 'Portfolio' )
+
     # enter ticker list
     ticker_str = st.text_input( "Ticker list", ' '.join( params['port'] ),
                                 key='tickerlist',
                                 on_change=cb_ticker_list )
 
+    if st.button( 'Refresh' ):
+        st.experimental_rerun()
+
     # ---------------------------------------------------------------------------------------------
     # Summary
     # ---------------------------------------------------------------------------------------------
 
-    st.subheader( 'Portfolio' )
     df = pd.DataFrame.from_dict( table_data, orient='index' ).sort_values( by='RSI(14)' )
     df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
     st.write( df )
@@ -827,6 +831,9 @@ if menu == 'Market':
                             key="marketperiod", 
                             on_change=cb_market_period )
 
+    if st.button( 'Refresh' ):
+        st.experimental_rerun()
+
     # check market open
     if is_market_open():
         ticker_list = params[ 'market' ]
@@ -835,7 +842,6 @@ if menu == 'Market':
 
     for option in ticker_list:
         num_points = get_num_points( market_hist['close'][option].index, period_delta[period] )
-        print( option, num_points, period_delta[period] )
         market_chart = get_price_chart( market_list, market_hist, option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
 
@@ -890,7 +896,7 @@ if menu == 'Pattern':
     # ---------------------------------------------------------------------------------------------
 
     # sub title
-    st.subheader( 'Pattern graph' )
+    st.subheader( 'Pattern chart' )
 
     # stock selector (share key with stock menu)
     option = st.selectbox( 'Ticker', params['port'], key='stockticker' )
