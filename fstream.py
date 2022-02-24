@@ -520,6 +520,15 @@ def fill_table( stock_list ):
         except:
             pass
 
+    # update P/E from Ticker.fund_equity_holdings (ETF only)
+    for key, val in stock_list.fund_equity_holdings.items():
+
+        # check if ETF
+        if stock_list.price[key]['quoteType'] != 'ETF': continue
+        
+        # update P/E
+        _table_data[ key ][ attr_list['trailingPE'] ] = val['priceToEarnings']
+
     return _table_data
 
 def save_params():
@@ -625,13 +634,6 @@ bench_hist  = fetch_history_alt( bench_list,  period='1y', interval='1d' )
 market_hist = fetch_history    ( market_list, period='5d', interval='5m' )
 
 # -------------------------------------------------------------------------------------------------
-# Generate data
-# -------------------------------------------------------------------------------------------------
-
-# fill data from stock list
-table_data = fill_table( stock_list )
-
-# -------------------------------------------------------------------------------------------------
 # Portfolio
 # -------------------------------------------------------------------------------------------------
 
@@ -650,6 +652,9 @@ if menu == 'Portfolio':
     # ---------------------------------------------------------------------------------------------
     # Summary
     # ---------------------------------------------------------------------------------------------
+
+    # fill data from stock list
+    table_data = fill_table( stock_list )
 
     df = pd.DataFrame.from_dict( table_data, orient='index' ).sort_values( by='RSI(14)' )
     df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
@@ -747,6 +752,18 @@ if menu == 'Stock':
                             on_change=cb_stock_period )
 
     num_points = get_num_points( stock_hist['close'][option].index, period_delta[period] )
+
+    # detailed information (JSON format)
+    with st.expander( "Detailed information" ):
+        
+        st.text( 'Summary detail' )
+        st.json( stock_list.summary_detail[ option ] )
+
+        st.text( 'Financial data' )
+        if stock_list.price[ option ][ 'quoteType' ] == 'EQUITY':
+            st.json( stock_list.financial_data[ option ] )
+        else:
+            st.json( stock_list.fund_holding_info[ option ] )
 
     # ---------------------------------------------------------------------------------------------
     # price history chart
