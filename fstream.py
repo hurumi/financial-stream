@@ -607,9 +607,6 @@ def cb_pattern_period():
 # Layout
 # -------------------------------------------------------------------------------------------------
 
-# app
-# st.set_page_config( page_title="Financial Stream", layout="wide" )
-
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
 menu   = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock', 'Pattern' ) )
