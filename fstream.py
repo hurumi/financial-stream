@@ -523,11 +523,14 @@ def fill_table( stock_list ):
     # update P/E from Ticker.fund_equity_holdings (ETF only)
     for key, val in stock_list.fund_equity_holdings.items():
 
-        # check if ETF
-        if stock_list.price[key]['quoteType'] != 'ETF': continue
-        
-        # update P/E
-        _table_data[ key ][ attr_list['trailingPE'] ] = val['priceToEarnings']
+        try:
+            # check if ETF
+            if stock_list.price[key]['quoteType'] != 'ETF': continue
+            
+            # update P/E
+            _table_data[ key ][ attr_list['trailingPE'] ] = val['priceToEarnings']
+        except:
+            pass
 
     return _table_data
 
@@ -603,6 +606,9 @@ def cb_pattern_period():
 # -------------------------------------------------------------------------------------------------
 # Layout
 # -------------------------------------------------------------------------------------------------
+
+# app
+# st.set_page_config( page_title="Financial Stream", layout="wide" )
 
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
