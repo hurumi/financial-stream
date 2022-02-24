@@ -660,7 +660,7 @@ if menu == 'Portfolio':
     table_data = fill_table( stock_list )
 
     df = pd.DataFrame.from_dict( table_data, orient='index' ).sort_values( by='RSI(14)' )
-    df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
+    df = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
     st.write( df )
 
     # ---------------------------------------------------------------------------------------------
@@ -721,7 +721,7 @@ if menu == 'Portfolio':
     
     if oversold_data != {}:
         df = pd.DataFrame.from_dict( oversold_data, orient='index' ).sort_values( by='RSI(14)' )
-        df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
+        df = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
         st.write( df )
 
     # sub title
@@ -732,7 +732,7 @@ if menu == 'Portfolio':
     
     if overbought_data != {}:
         df = pd.DataFrame.from_dict( overbought_data, orient='index' ).sort_values( by='RSI(14)' )
-        df = df.style.set_precision( 2 ).apply( highlight_negative, axis=1 ).set_na_rep("-")
+        df = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
         st.write( df )
 
 # -------------------------------------------------------------------------------------------------
