@@ -27,7 +27,7 @@
     "CCI_L": -100,
     "CCI_H": 100,
     "market_period": "12H",
-    "gain_period": "1M",
+    "gain_period": "3M",
     "stock_period": "3M",
     "pattern_period": "3M"
 }
