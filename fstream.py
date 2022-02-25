@@ -120,15 +120,16 @@ def highlight_negative(s):
     is_negative = s < 0
     return ['color: red' if i else '' for i in is_negative]
 
-def fill_table( st_list, st_hist ):
+@st.experimental_singleton
+def fill_table( _st_list, _st_hist ):
 
     # from Ticker.price
-    df1 = pd.DataFrame( st_list.price )
+    df1 = pd.DataFrame( _st_list.price )
     rm_index = [ x for x in df1.index if x not in attr_list ]
     df1.drop( rm_index, inplace=True )
 
     # from Ticker.summary_detail
-    df2 = pd.DataFrame( st_list.summary_detail )
+    df2 = pd.DataFrame( _st_list.summary_detail )
     rm_index = [ x for x in df2.index if x not in attr_list ]
     df2.drop( rm_index, inplace=True )
 
@@ -141,11 +142,11 @@ def fill_table( st_list, st_hist ):
     for key in df.columns:
         
         # compute RSI
-        rsi = ta.RSI( st_hist['close'][ key ] )[-1]   
+        rsi = ta.RSI( _st_hist['close'][ key ] )[-1]   
         rsi_list[ key ] = rsi
         
         # compute CCI
-        cci = ta.CCI( st_hist['high'][ key ], st_hist['low'][ key ], st_hist['close'][ key ] )[-1] 
+        cci = ta.CCI( _st_hist['high'][ key ], _st_hist['low'][ key ], _st_hist['close'][ key ] )[-1] 
         cci_list[ key ] = cci
 
     # rename column
@@ -175,9 +176,9 @@ def fill_table( st_list, st_hist ):
         if '(%)' in key: df.loc[ key ] *= 100
 
     # replace ETF P/E
-    fund_info = st_list.fund_equity_holdings
+    fund_info = _st_list.fund_equity_holdings
     for key in df.columns:
-        if st_list.price[ key ][ 'quoteType' ] != 'ETF': continue
+        if _st_list.price[ key ][ 'quoteType' ] != 'ETF': continue
         try:
             df.loc[ 'P/E' ][ key ] = fund_info[ key ][ 'priceToEarnings' ]
         except:
@@ -288,8 +289,6 @@ else:
 
 # historical prices
 stock_hist  = fetch_history    ( stock_list,  period='1y', interval='1d' )
-bench_hist  = fetch_history_alt( bench_list,  period='1y', interval='1d' )
-market_hist = fetch_history    ( market_list, period='5d', interval='5m' )
 
 # -------------------------------------------------------------------------------------------------
 # Portfolio
@@ -328,6 +327,8 @@ if menu == 'Portfolio':
                                 key='gainperiod',
                                 on_change=cb_gain_period )
 
+        # load data
+        bench_hist = fetch_history_alt( bench_list,  period='1y', interval='1d' )
         num_points = get_num_points( bench_hist['close'][ params['bench'][0] ].index, period_delta[period] )
 
         # draw chart
@@ -507,6 +508,10 @@ if menu == 'Market':
     else:
         ticker_list = params[ 'future' ]
 
+    # load data
+    market_hist = fetch_history( market_list, period='5d', interval='5m' )
+
+    # draw
     for option in ticker_list:
         num_points = get_num_points( market_hist['close'][option].index, period_delta[period] )
         market_chart = fc.get_price_chart( market_list, market_hist, option, num_points )
