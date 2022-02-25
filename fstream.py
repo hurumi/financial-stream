@@ -179,10 +179,10 @@ def is_market_open():
     if _temp.price['aapl']['marketState'] == 'REGULAR': return True
     return False
 
-def highlight_negative(s):
+def highlight_negative( s ):
 
     is_negative = s < 0
-    return ['color: red' if i else '' for i in is_negative]
+    return [ 'color: red' if i else '' for i in is_negative ]
 
 def save_params():
     with open( _PARAM_FILE, 'w' ) as fp:
@@ -281,9 +281,6 @@ if is_market_open():
 else:
     market_list = fetch_tickers( params['future'] )
 
-# historical prices
-stock_hist  = fetch_history    ( stock_list,  period='1y', interval='1d', cache_key='stock' )
-
 # -------------------------------------------------------------------------------------------------
 # Portfolio
 # -------------------------------------------------------------------------------------------------
@@ -298,11 +295,14 @@ if menu == 'Portfolio':
                                 on_change=cb_ticker_list )
 
     if st.button( 'Refresh' ):
-        st.experimental_rerun()
+        st.experimental_singleton.clear()
 
     # ---------------------------------------------------------------------------------------------
     # Summary
     # ---------------------------------------------------------------------------------------------
+
+    # historical prices
+    stock_hist = fetch_history( stock_list,  period='1y', interval='1d', cache_key='stock' )
 
     # fill data from stock list
     df  = fill_table( stock_list, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
@@ -326,8 +326,13 @@ if menu == 'Portfolio':
         num_points = get_num_points( bench_hist['close'][ params['bench'][0] ].index, period_delta[period] )
 
         # draw chart
-        btest_chart = fc.get_btest_chart( stock_hist, bench_hist, num_points, params )
+        bt_src, bt_inf = fc.get_btest_source( stock_hist, bench_hist, num_points, params )
+        btest_chart    = fc.get_btest_chart ( bt_src )
         st.altair_chart( btest_chart, use_container_width=True )
+
+        # write basic statistics
+        bt_inf_s = bt_inf.style.format( precision=2, na_rep='-' )
+        st.dataframe( bt_inf_s )
 
     # ---------------------------------------------------------------------------------------------
     # Oversold & Overbought
@@ -396,6 +401,8 @@ if menu == 'Stock':
                             key='stockperiod',
                             on_change=cb_stock_period )
 
+    # historical prices
+    stock_hist = fetch_history( stock_list,  period='1y', interval='1d', cache_key='stock' )
     num_points = get_num_points( stock_hist['close'][option].index, period_delta[period] )
 
     # detailed information (JSON format)
@@ -494,7 +501,7 @@ if menu == 'Market':
                             on_change=cb_market_period )
 
     if st.button( 'Refresh' ):
-        st.experimental_rerun()
+        st.experimental_singleton.clear()
 
     # check market open
     if is_market_open():
@@ -502,7 +509,7 @@ if menu == 'Market':
     else:
         ticker_list = params[ 'future' ]
 
-    # load data
+    # load historical data
     market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market' )
 
     # draw
@@ -517,7 +524,8 @@ if menu == 'Market':
 
 if menu == 'Pattern':
 
-    # limit period range (1 Month)
+    # historical prices
+    stock_hist = fetch_history( stock_list,  period='1y', interval='1d', cache_key='stock' )
     num_points = get_num_points( stock_hist['close'][params['port'][0]].index, period_delta['1M'] )
 
     # ---------------------------------------------------------------------------------------------

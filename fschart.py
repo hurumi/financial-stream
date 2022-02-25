@@ -25,7 +25,16 @@ abbr_list = {
 }
 
 # -------------------------------------------------------------------------------------------------
-# Functions
+# Utility Functions
+# -------------------------------------------------------------------------------------------------
+
+def compute_mdd( data ):
+
+    mdd = ( data - data.cummax() ).min()
+    return mdd
+
+# -------------------------------------------------------------------------------------------------
+# Chart Functions
 # -------------------------------------------------------------------------------------------------
 
 def get_price_chart( st_list, st_hist, ticker, num_points ):
@@ -272,7 +281,7 @@ def get_macd_charts( st_hist, ticker, num_points ):
     )
     return ch1, ch2
 
-def get_btest_chart( po_hist, be_hist, num_points, params ):
+def get_btest_source( po_hist, be_hist, num_points, params ):
 
     # get benchmark data
     _source = []    
@@ -309,6 +318,35 @@ def get_btest_chart( po_hist, be_hist, num_points, params ):
 
     # concat data
     source = pd.concat( _source )
+
+    # get merged ticker list
+    tickers = [ 'Portfolio' ] + params['bench']
+
+    # make dataframe
+    info = pd.DataFrame( columns=[ 'Gain', 'Delta', 'Stdev', 'Best', 'Worst', 'MDD' ] )
+
+    port_gain = 0.
+    for ticker in tickers:
+        
+        # get column data
+        data  = source.loc[ source['Metric'] == ticker ]
+
+        # update portfolio gain
+        if ticker == 'Portfolio': port_gain = data[ 'Gain' ].iloc[-1]
+
+        # make row
+        entry = {}
+        entry[ 'Gain'   ] = data[ 'Gain' ].iloc[-1]
+        entry[ 'Delta'  ] = entry[ 'Gain' ] - port_gain
+        entry[ 'Stdev'  ] = data[ 'Gain' ].std()
+        entry[ 'Best'   ] = data[ 'Gain' ].max()
+        entry[ 'Worst'  ] = data[ 'Gain' ].min()
+        entry[ 'MDD'    ] = compute_mdd( data[ 'Gain' ] )
+        info.loc[ticker] = entry
+        
+    return source, info
+
+def get_btest_chart( source ):
 
     # benchmark chart
     ch = alt.Chart( source ).mark_line().encode(
