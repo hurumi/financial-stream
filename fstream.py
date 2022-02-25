@@ -99,29 +99,13 @@ def fetch_tickers( tickers ):
     return _list
 
 @st.experimental_singleton
-def fetch_history( _ticker_list, period, interval ):
+def fetch_history( _ticker_list, period, interval, cache_key ):
 
     _hist = _ticker_list.history( period, interval, adj_timezone=False )
     return _hist
 
 @st.experimental_singleton
-def fetch_history_alt( _ticker_list, period, interval ):
-
-    _hist = _ticker_list.history( period, interval, adj_timezone=False )
-    return _hist
-
-def is_market_open():
-    _temp = Ticker( 'aapl', verify=False )
-    if _temp.price['aapl']['marketState'] == 'REGULAR': return True
-    return False
-
-def highlight_negative(s):
-
-    is_negative = s < 0
-    return ['color: red' if i else '' for i in is_negative]
-
-@st.experimental_singleton
-def fill_table( _st_list, _st_hist ):
+def fill_table( _st_list, _st_hist, cache_key ):
 
     # from Ticker.price
     df1 = pd.DataFrame( _st_list.price )
@@ -189,6 +173,16 @@ def fill_table( _st_list, _st_hist ):
     df.loc[ 'CCI(14)' ] = cci_list
 
     return df.transpose()
+
+def is_market_open():
+    _temp = Ticker( 'aapl', verify=False )
+    if _temp.price['aapl']['marketState'] == 'REGULAR': return True
+    return False
+
+def highlight_negative(s):
+
+    is_negative = s < 0
+    return ['color: red' if i else '' for i in is_negative]
 
 def save_params():
     with open( _PARAM_FILE, 'w' ) as fp:
@@ -288,7 +282,7 @@ else:
     market_list = fetch_tickers( params['future'] )
 
 # historical prices
-stock_hist  = fetch_history    ( stock_list,  period='1y', interval='1d' )
+stock_hist  = fetch_history    ( stock_list,  period='1y', interval='1d', cache_key='stock' )
 
 # -------------------------------------------------------------------------------------------------
 # Portfolio
@@ -311,7 +305,7 @@ if menu == 'Portfolio':
     # ---------------------------------------------------------------------------------------------
 
     # fill data from stock list
-    df  = fill_table( stock_list, stock_hist ).sort_values( by='RSI(14)' )
+    df  = fill_table( stock_list, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
     dfs = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
     st.write( dfs )
 
@@ -328,7 +322,7 @@ if menu == 'Portfolio':
                                 on_change=cb_gain_period )
 
         # load data
-        bench_hist = fetch_history_alt( bench_list,  period='1y', interval='1d' )
+        bench_hist = fetch_history( bench_list,  period='1y', interval='1d', cache_key='bench' )
         num_points = get_num_points( bench_hist['close'][ params['bench'][0] ].index, period_delta[period] )
 
         # draw chart
@@ -509,7 +503,7 @@ if menu == 'Market':
         ticker_list = params[ 'future' ]
 
     # load data
-    market_hist = fetch_history( market_list, period='5d', interval='5m' )
+    market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market' )
 
     # draw
     for option in ticker_list:
