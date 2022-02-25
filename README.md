@@ -50,3 +50,41 @@ bearish_pattern = [
 #### Example screenshot of pattern menu
 
 <img src="/images/pattern.png" width="100%">
+
+#### Example configuration parameter (param.json)
+
+```json
+{
+    "port": [
+        "MSFT",
+        "AAPL",
+        "SPLG",
+        "QQQ",
+        "JEPI",
+        "TSLA"
+    ],
+    "market": [
+        "^IXIC",
+        "^GSPC",
+        "^DJI",
+        "KRW=X"
+    ],
+    "future": [
+        "NQ=F",
+        "ES=F",
+        "YM=F",
+        "KRW=X"
+    ],
+    "bench": [
+        "SPY"
+    ],
+    "RSI_L": 35,
+    "RSI_H": 65,
+    "CCI_L": -100,
+    "CCI_H": 100,
+    "market_period": "12H",
+    "gain_period": "1M",
+    "stock_period": "3M",
+    "pattern_period": "3M"
+}
+```
