@@ -4,7 +4,8 @@
 
 # disable SSL warnings
 from asyncio.windows_events import NULL
-from numpy import save
+from numpy import NaN, save
+from simplejson import OrderedDict
 import urllib3
 urllib3.disable_warnings( urllib3.exceptions.InsecureRequestWarning )
 
@@ -20,6 +21,7 @@ import talib  as ta
 import os
 import json
 import datetime as dt
+import fschart  as fc
 
 from yahooquery import Ticker
 
@@ -38,15 +40,6 @@ _RSI_THRESHOLD_H =   70
 _CCI_THRESHOLD_L = -100
 _CCI_THRESHOLD_H =  100
 
-abbr_list = { 
-    '^IXIC':'NASDAQ Composite',
-    '^GSPC':'S&P 500',
-    '^DJI':'DOW Jones Average',    
-    'NQ=F':'NASDAQ Futures',
-    'ES=F':'S&P 500 Futures',
-    'YM=F':'DOW Jones Futures',
-    'KRW=X':'USD/KRW',
-}
 attr_list = { 
     'regularMarketChangePercent':'Change(%)', 
     'regularMarketPrice':'Price',
@@ -117,422 +110,84 @@ def fetch_history_alt( _ticker_list, period, interval ):
     _hist = _ticker_list.history( period, interval, adj_timezone=False )
     return _hist
 
-def get_usdkrw():
-
-    _temp = requests.get( "https://api.exchangerate-api.com/v4/latest/USD", verify=False )
-    exchange_rate = _temp.json()
-
-    return exchange_rate['rates']['KRW']
-
 def is_market_open():
     _temp = Ticker( 'aapl', verify=False )
     if _temp.price['aapl']['marketState'] == 'REGULAR': return True
     return False
-
-def check_oversold( entry, rsi_L, cci_L ):
-
-    if entry[ 'RSI(14)' ] > rsi_L:
-        return False
-
-    if entry[ 'CCI(14)' ] > cci_L:
-        return False
-
-    return True
-
-def check_overbought( entry, rsi_H, cci_H ):
-
-    if entry[ 'RSI(14)' ] < rsi_H:
-        return False      
-
-    if entry[ 'CCI(14)' ] < cci_H:
-        return False            
-
-    return True
 
 def highlight_negative(s):
 
     is_negative = s < 0
     return ['color: red' if i else '' for i in is_negative]
 
-def get_price_chart( st_list, st_hist, ticker, num_points ):
+def fill_table( st_list, st_hist ):
 
-        hist = st_hist[ 'close' ][ ticker ]
+    # from Ticker.price
+    df1 = pd.DataFrame( st_list.price )
+    rm_index = [ x for x in df1.index if x not in attr_list ]
+    df1.drop( rm_index, inplace=True )
 
-        source1 = pd.DataFrame( {
-            'Date': hist.index[-num_points:],
-            'Price': hist[-num_points:].values
-        } )
+    # from Ticker.summary_detail
+    df2 = pd.DataFrame( st_list.summary_detail )
+    rm_index = [ x for x in df2.index if x not in attr_list ]
+    df2.drop( rm_index, inplace=True )
 
-        ch = alt.Chart( source1 ).mark_line().encode(
-            x=alt.X( 'Date:T' ),
-            y=alt.Y( 'Price:Q', scale=alt.Scale( zero=False )  ),
-            tooltip = [ 'Date', 'Price' ]
-        )
-
-        prev_close = st_list.price[ ticker ][ 'regularMarketPreviousClose' ]
-        cur_price  = st_list.price[ ticker ][ 'regularMarketPrice'         ]
-
-        source2 = pd.DataFrame( {
-            'Date': hist.index[-num_points:],
-            'Price': prev_close
-        } )
-
-        delta = ( cur_price - prev_close ) / prev_close * 100.
-        title = abbr_list[ ticker ] if ticker in abbr_list else ticker
-        prev = alt.Chart( source2 ).mark_line().encode(
-            x=alt.X( 'Date:T' ),
-            y=alt.Y( 'Price:Q' ),
-            color=alt.value("#FFAA00"),
-            tooltip = [ 'Date', 'Price' ]
-        ).properties( title = f'{title}: {cur_price:.2f} ({delta:.2f}%)' )
-
-        return ch+prev
-
-def get_candle_chart( st_list, st_hist, ticker, num_points ):
-
-        hist = st_hist[ 'close' ][ ticker ]
-
-        # make source
-        source1 = pd.DataFrame( {
-            'Date':  hist.index[-num_points:],
-            'High':  st_hist['high'][ticker][-num_points:].values,
-            'Low':   st_hist['low'][ticker][-num_points:].values,
-            'Open':  st_hist['open'][ticker][-num_points:].values,
-            'Close': st_hist['close'][ticker][-num_points:].values
-        } )
-
-        # conditional color for bar
-        open_close_color = alt.condition("datum.Open <= datum.Close",
-                                          alt.value( "#06982d" ),
-                                          alt.value( "#ae1325" ) )
-
-        # base
-        base = alt.Chart( source1 ).encode(
-            x = alt.X( 'Date:T' ),
-            color=open_close_color,
-            tooltip = [ 'Date', 'Close' ]
-        )
-
-        # rule
-        rule = base.mark_rule().encode(
-            alt.Y(
-                'Low:Q',
-                title = 'Price',
-                scale = alt.Scale( zero=False ),
-            ),
-            alt.Y2('High:Q')
-        )
-
-        # bar
-        bar = base.mark_bar().encode(
-            alt.Y('Open:Q'),
-            alt.Y2('Close:Q')
-        )
-
-        # final candlestick
-        ch = rule + bar
-
-        # draw previous close line
-        prev_close = st_list.price[ ticker ][ 'regularMarketPreviousClose' ]
-        cur_price  = st_list.price[ ticker ][ 'regularMarketPrice'         ]
-
-        source2 = pd.DataFrame( {
-            'Date': hist.index[-num_points:],
-            'Price': prev_close
-        } )
-
-        delta = ( cur_price - prev_close ) / prev_close * 100.
-        title = abbr_list[ ticker ] if ticker in abbr_list else ticker
-        prev = alt.Chart( source2 ).mark_line().encode(
-            x=alt.X( 'Date:T' ),
-            y=alt.Y( 'Price:Q' ),
-            color=alt.value("#FFAA00"),
-            tooltip = [ 'Date', 'Price' ]
-        ).properties( title = f'{title}: {cur_price:.2f} ({delta:.2f}%)' )
-
-        return ch+prev        
-
-def get_bband_chart( st_hist, ticker, num_points ):
-
-    bband_up, bband_mid, bband_low = ta.BBANDS( st_hist['close'][ ticker ], 20, 2 )
-    source1 = pd.DataFrame( {
-        'Metric': 'BBAND_UPPER',
-        'Date'  : bband_up.index[-num_points:],
-        'Price' : bband_up[-num_points:].values
-    } )
-    source2 = pd.DataFrame( {
-        'Metric': 'BBAND_MIDDLE',
-        'Date'  : bband_mid.index[-num_points:],
-        'Price' : bband_mid[-num_points:].values
-    } )
-    source3 = pd.DataFrame( {
-        'Metric': 'BBAND_LOWER',
-        'Date'  : bband_low.index[-num_points:],
-        'Price' : bband_low[-num_points:].values
-    } )
-    source = pd.concat( [ source1, source2, source3 ] )
-    ch = alt.Chart( source ).mark_line( strokeDash=[2,3] ).encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'Price', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Price' ],
-        color = alt.Color( 'Metric', legend=None ),
-    )
-    return ch
-
-def get_ma_chart( st_hist, ticker, num_points, period, colorstr ):
-
-    ma = ta.SMA( st_hist['close'][ ticker ], period )
-    source = pd.DataFrame( {
-        'Metric': f'MA{period}',
-        'Date'  : ma.index[-num_points:],
-        'Price' : ma[-num_points:].values
-    } )
-    ch = alt.Chart( source ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'Price', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Price' ],
-        color = alt.value( colorstr ),
-        strokeWidth = alt.value( 1 ),
-    )
-    return ch
-
-def get_rsi_chart( st_hist, ticker, num_points ):
-
-    rsi_hist = ta.RSI( st_hist['close'][ ticker ] )
-    source = pd.DataFrame( {
-        'Date': rsi_hist.index[-num_points:],
-        'RSI': rsi_hist[-num_points:].values
-    } )
-    ch = alt.Chart( source ).mark_line( point=alt.OverlayMarkDef() ).encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
-        tooltip = [ 'Date', 'RSI' ]
-    ).properties( title = f'RSI(14): {rsi_hist[-1]:.2f}' )
-    source_up = pd.DataFrame( {
-        'Date': rsi_hist.index[-num_points:],
-        'RSI': params['RSI_H']
-    } )
-    up = alt.Chart( source_up ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
-        color=alt.value("#FFAA00")
-    )
-    source_dn = pd.DataFrame( {
-        'Date': rsi_hist.index[-num_points:],
-        'RSI': params['RSI_L']
-    } )
-    dn = alt.Chart( source_dn ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
-        color=alt.value("#FFAA00")
-    ) 
-    return ch+up+dn
-
-def get_cci_chart( st_hist, ticker, num_points ):
-
-    cci_hist = ta.CCI( st_hist['high'][ ticker ], st_hist['low'][ ticker ], st_hist['close'][ ticker ] )
-    source = pd.DataFrame( {
-        'Date': cci_hist.index[-num_points:],
-        'CCI': cci_hist[-num_points:].values
-    } )
-    ch = alt.Chart( source ).mark_line( point=alt.OverlayMarkDef() ).encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
-        tooltip = [ 'Date', 'CCI' ]
-    ).properties( title = f'CCI(14): {cci_hist[-1]:.2f}' )
-    source_up = pd.DataFrame( {
-        'Date': cci_hist.index[-num_points:],
-        'CCI': params['CCI_H']
-    } )
-    up = alt.Chart( source_up ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
-        color=alt.value("#FFAA00")
-    )
-    source_dn = pd.DataFrame( {
-        'Date': cci_hist.index[-num_points:],
-        'CCI': params['CCI_L']
-    } )
-    dn = alt.Chart( source_dn ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
-        color=alt.value("#FFAA00")
-    ) 
-    return ch+up+dn    
-
-def get_macd_charts( st_hist, ticker, num_points ):
-
-    macd, macdsignal, macdhist = ta.MACD( st_hist['close'][ ticker ] )
-    source1 = pd.DataFrame( {
-        'Metric': 'MACD(12)',
-        'Date'  : macd.index[-num_points:],
-        'Value' : macd[-num_points:].values
-    } )
-    source2 = pd.DataFrame( {
-        'Metric': 'MACD(26)',
-        'Date'  : macdsignal.index[-num_points:],
-        'Value' : macdsignal[-num_points:].values
-    } )
-    source3 = pd.DataFrame( {
-        'Metric': 'MACDHIST',
-        'Date'  : macdhist.index[-num_points:],
-        'Hist'  : macdhist[-num_points:].values
-    } )
-    source = pd.concat( [ source1, source2 ] )
-
-    ch1 = alt.Chart( source ).mark_line( point=alt.OverlayMarkDef() ).encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Value' ],
-        color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
-    ).properties( title = 'MACD' )
-    ch2 = alt.Chart( source3 ).mark_bar().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'Hist' ),
-        tooltip = [ 'Date', 'Hist' ],
-        color=alt.condition(
-            alt.datum.Hist > 0,
-            alt.value("green"),  # The positive color
-            alt.value("red")  # The negative color
-        )        
-    )
-    return ch1, ch2
-
-def get_btest_chart( po_hist, be_hist, num_points ):
-
-    # get benchmark data
-    _source = []    
-    for ticker in params['bench']:
-
-        elem = be_hist[ 'close' ][ ticker ].copy()
-        elem /= elem[-num_points]
-        elem -= 1
-        elem *= 100
-
-        _temp = pd.DataFrame( {
-            'Metric': ticker,
-            'Date'  : elem.index[-num_points:],
-            'Gain' : elem[-num_points:].values
-        } )
-        _source.append( _temp )
-
-    # get portfolio data
-    for index, ticker in enumerate( params['port'] ):
-        elem = po_hist[ 'close' ][ ticker ].copy()
-        elem /= elem[-num_points]
-        elem -= 1
-        elem *= 100
-        if index == 0: sum  = elem
-        else:          sum += elem
-    sum /= len( params['port'] )
-
-    _temp = pd.DataFrame( {
-        'Metric': 'Portfolio',
-        'Date'  : sum.index[-num_points:],
-        'Gain' : sum[-num_points:].values
-    } )
-    _source.append( _temp )
-
-    # concat data
-    source = pd.concat( _source )
-
-    # benchmark chart
-    ch = alt.Chart( source ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'Gain', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Gain' ],
-        color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
-    )
-
-    return ch
-
-def get_pattern_chart( bullish_histo, bearish_histo ):
-
-    domain = [ 'Bullish', 'Bearish' ]
-    range_ = [ '#006400', 'red' ]
-
-    source1 = pd.DataFrame( {
-        'Signal': 'Bullish',
-        'Date'  : bullish_histo.index,
-        'Value' : bullish_histo.values
-    } )
-    source2 = pd.DataFrame( {
-        'Signal': 'Bearish',
-        'Date'  : bearish_histo.index,
-        'Value' : bearish_histo.values
-    } )
-    source = pd.concat( [ source1, source2 ] )
-
-    ch = alt.Chart( source ).mark_point( size=150 ).encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Signal', 'Date', 'Value' ],
-        color = alt.Color( 'Signal', legend=alt.Legend( orient="top-left" ), scale=alt.Scale(domain=domain, range=range_) )
-    )
-
-    return ch
-
-def fill_table( stock_list ):
-
-    # data from Ticker.price
-    _table_data = {}
+    # concat
+    df = pd.concat( [ df1, df2 ] )
     
-    for key, val in stock_list.price.items():
+    # compute RSI & CCI
+    rsi_list = {}
+    cci_list = {}
+    for key in df.columns:
         
-        # initialize
-        entry = {}
-
-        try:
-            # for each items
-            for sub_key, sub_val in val.items():
-                if sub_key in attr_list:
-                    if "Percent" in sub_key: sub_val *= 100.
-                    entry[ attr_list[ sub_key ] ] = sub_val
-
-            # compute RSI
-            rsi = ta.RSI( stock_hist['close'][ key ] )[-1]
-            entry[ 'RSI(14)' ] = rsi
-
-            # compute CCI
-            cci = ta.CCI( stock_hist['high'][ key ], stock_hist['low'][ key ], stock_hist['close'][ key ] )[-1]
-            entry[ 'CCI(14)' ] = cci
+        # compute RSI
+        rsi = ta.RSI( st_hist['close'][ key ] )[-1]   
+        rsi_list[ key ] = rsi
         
-            # replace
-            _table_data[ key ] = entry
-        except:
-            pass
+        # compute CCI
+        cci = ta.CCI( st_hist['high'][ key ], st_hist['low'][ key ], st_hist['close'][ key ] )[-1] 
+        cci_list[ key ] = cci
 
-    # data from Ticker.summary_detail
-    for key, val in stock_list.summary_detail.items():
+    # rename column
+    for key, val in attr_list.items():
+        df.rename( index = { key:val }, inplace=True )
+
+    # compute 52W_H & 52W_L
+    for key in df.columns:
+        # 52W_L
+        try:
+            new_entry  = df.loc[ 'Price'][ key ] - df.loc[ '52W_L(%)' ][ key ]
+            new_entry /= df.loc[ '52W_L(%)' ][ key ]
+            df.loc[ '52W_L(%)' ][ key ] = new_entry
+        except:
+            df.loc[ '52W_L(%)' ][ key ] = NaN
         
-        # initialize
-        entry = _table_data[ key ]
-
+        # 52W_H
         try:
-            for sub_key, sub_val in val.items():
-                if sub_key in attr_list:
-                    if "Percent" in sub_key: sub_val *= 100.
-                    if sub_key == 'fiftyTwoWeekHigh' or sub_key == 'fiftyTwoWeekLow':
-                        sub_val = ( entry[ 'Price' ]-sub_val ) / sub_val * 100.
-                    entry[ attr_list[ sub_key ] ] = sub_val
-
-            _table_data[ key ] = entry
+            new_entry  = df.loc[ 'Price'][ key ] - df.loc[ '52W_H(%)' ][ key ]
+            new_entry /= df.loc[ '52W_H(%)' ][ key ]
+            df.loc[ '52W_H(%)' ][ key ] = new_entry
         except:
-            pass
+            df.loc[ '52W_H(%)' ][ key ] = NaN
 
-    # update P/E from Ticker.fund_equity_holdings (ETF only)
-    for key, val in stock_list.fund_equity_holdings.items():
+    # compute percentage
+    for key in df.index:
+        if '(%)' in key: df.loc[ key ] *= 100
 
+    # replace ETF P/E
+    fund_info = st_list.fund_equity_holdings
+    for key in df.columns:
+        if st_list.price[ key ][ 'quoteType' ] != 'ETF': continue
         try:
-            # check if ETF
-            if stock_list.price[key]['quoteType'] != 'ETF': continue
-            
-            # update P/E
-            _table_data[ key ][ attr_list['trailingPE'] ] = val['priceToEarnings']
+            df.loc[ 'P/E' ][ key ] = fund_info[ key ][ 'priceToEarnings' ]
         except:
-            pass
+            df.loc[ 'P/E' ][ key ] = NaN
 
-    return _table_data
+    # add two rows
+    df.loc[ 'RSI(14)' ] = rsi_list
+    df.loc[ 'CCI(14)' ] = cci_list
+
+    return df.transpose()
 
 def save_params():
     with open( _PARAM_FILE, 'w' ) as fp:
@@ -657,11 +312,9 @@ if menu == 'Portfolio':
     # ---------------------------------------------------------------------------------------------
 
     # fill data from stock list
-    table_data = fill_table( stock_list )
-
-    df = pd.DataFrame.from_dict( table_data, orient='index' ).sort_values( by='RSI(14)' )
-    df = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
-    st.write( df )
+    df  = fill_table( stock_list, stock_hist ).sort_values( by='RSI(14)' )
+    dfs = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
+    st.write( dfs )
 
     # ---------------------------------------------------------------------------------------------
     # Backtest
@@ -678,7 +331,7 @@ if menu == 'Portfolio':
         num_points = get_num_points( bench_hist['close'][ params['bench'][0] ].index, period_delta[period] )
 
         # draw chart
-        btest_chart = get_btest_chart( stock_hist, bench_hist, num_points )
+        btest_chart = fc.get_btest_chart( stock_hist, bench_hist, num_points, params )
         st.altair_chart( btest_chart, use_container_width=True )
 
     # ---------------------------------------------------------------------------------------------
@@ -707,33 +360,27 @@ if menu == 'Portfolio':
             on_change=cb_cci_margin )
 
     # generate oversold and overbought data
-    oversold_data   = {}
-    overbought_data = {}
-    for key, val in table_data.items():
-        if check_oversold  ( val, rsi_L, cci_L ): oversold_data  [ key ] = val
-        if check_overbought( val, rsi_H, cci_H ): overbought_data[ key ] = val
+    oversold_idx  = df['RSI(14)'] < rsi_L
+    oversold_idx *= df['CCI(14)'] < cci_L
+    oversold_df   = df[ oversold_idx ]
+
+    overbought_idx  = df['RSI(14)'] > rsi_H
+    overbought_idx *= df['CCI(14)'] > cci_H
+    overbought_df   = df[ overbought_idx ]
 
     # sub title
     st.markdown( '##### Oversold' )
-
-    # write noted list
     st.text( f'RSI<{rsi_L} and CCI<{cci_L}' )
-    
-    if oversold_data != {}:
-        df = pd.DataFrame.from_dict( oversold_data, orient='index' ).sort_values( by='RSI(14)' )
-        df = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
-        st.write( df )
+    if len( oversold_df.index ) > 0:
+        dfs = oversold_df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
+        st.write( dfs )
 
     # sub title
     st.markdown( '##### Overbought' )
-
-    # write noted list
     st.text( f'RSI>{rsi_H} and CCI>{cci_H}' )
-    
-    if overbought_data != {}:
-        df = pd.DataFrame.from_dict( overbought_data, orient='index' ).sort_values( by='RSI(14)' )
-        df = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
-        st.write( df )
+    if len( overbought_df.index ) > 0:
+        dfs = overbought_df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
+        st.write( dfs )
 
 # -------------------------------------------------------------------------------------------------
 # Each stock
@@ -783,23 +430,23 @@ if menu == 'Stock':
         ma120_flag  = st.checkbox( 'MA120 (ORANGE)' )
 
     # price chart
-    price_chart = get_candle_chart( stock_list, stock_hist, option, num_points )
+    price_chart = fc.get_candle_chart( stock_list, stock_hist, option, num_points )
 
     # bollinger band chart
     if bband_flag:
-        price_chart += get_bband_chart( stock_hist, option, num_points )
+        price_chart += fc.get_bband_chart( stock_hist, option, num_points )
 
     # MA20 chart
     if ma20_flag:
-        price_chart += get_ma_chart( stock_hist, option, num_points, 20, 'red' )
+        price_chart += fc.get_ma_chart( stock_hist, option, num_points, 20, 'red' )
 
     # MA60 chart
     if ma60_flag:
-        price_chart += get_ma_chart( stock_hist, option, num_points, 60, 'green' )
+        price_chart += fc.get_ma_chart( stock_hist, option, num_points, 60, 'green' )
 
     # MA120 chart
     if ma120_flag:
-        price_chart += get_ma_chart( stock_hist, option, num_points, 120, 'orange' )
+        price_chart += fc.get_ma_chart( stock_hist, option, num_points, 120, 'orange' )
 
     # draw
     st.altair_chart( price_chart, use_container_width=True )
@@ -809,7 +456,7 @@ if menu == 'Stock':
     # ---------------------------------------------------------------------------------------------
 
     # rsi chart
-    rsi_chart = get_rsi_chart( stock_hist, option, num_points )
+    rsi_chart = fc.get_rsi_chart( stock_hist, option, num_points, params )
 
     # draw
     st.altair_chart( rsi_chart, use_container_width=True )
@@ -819,7 +466,7 @@ if menu == 'Stock':
     # ---------------------------------------------------------------------------------------------
 
     # rsi chart
-    cci_chart = get_cci_chart( stock_hist, option, num_points )
+    cci_chart = fc.get_cci_chart( stock_hist, option, num_points, params )
 
     # draw
     st.altair_chart( cci_chart, use_container_width=True )    
@@ -829,7 +476,7 @@ if menu == 'Stock':
     # ---------------------------------------------------------------------------------------------
     
     # macd chart
-    macd_chart, macd_hist_chart = get_macd_charts( stock_hist, option, num_points )
+    macd_chart, macd_hist_chart = fc.get_macd_charts( stock_hist, option, num_points )
 
     # draw
     st.altair_chart( macd_chart,      use_container_width=True )
@@ -862,7 +509,7 @@ if menu == 'Market':
 
     for option in ticker_list:
         num_points = get_num_points( market_hist['close'][option].index, period_delta[period] )
-        market_chart = get_price_chart( market_list, market_hist, option, num_points )
+        market_chart = fc.get_price_chart( market_list, market_hist, option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
 
 # -------------------------------------------------------------------------------------------------
@@ -957,10 +604,10 @@ if menu == 'Pattern':
     bearish_histo = _bearish_histo[ _bearish_histo > 0 ]
 
     # price chart
-    price_chart = get_candle_chart( stock_list, stock_hist, option, num_points )
+    price_chart = fc.get_candle_chart( stock_list, stock_hist, option, num_points )
 
     # bullish chart
-    price_chart += get_pattern_chart( bullish_histo, bearish_histo )
+    price_chart += fc.get_pattern_chart( bullish_histo, bearish_histo )
 
     # draw
     st.altair_chart( price_chart, use_container_width=True )
