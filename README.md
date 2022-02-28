@@ -63,6 +63,14 @@ bearish_pattern = [
         "JEPI",
         "TSLA"
     ],
+    "alloc": [
+        0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.04
+    ],
     "market": [
         "^IXIC",
         "^GSPC",
@@ -78,13 +86,13 @@ bearish_pattern = [
     "bench": [
         "SPY"
     ],
-    "RSI_L": 35,
-    "RSI_H": 65,
+    "RSI_L": 30,
+    "RSI_H": 70,
     "CCI_L": -100,
     "CCI_H": 100,
-    "market_period": "12H",
+    "market_period": "6H",
     "gain_period": "1M",
-    "stock_period": "3M",
-    "pattern_period": "3M"
+    "stock_period": "1M",
+    "pattern_period": "1M"
 }
 ```

@@ -6,6 +6,7 @@
 # Imports
 # -------------------------------------------------------------------------------------------------
 
+from numpy import NaN
 import pandas as pd
 import altair as alt
 import talib  as ta
@@ -300,19 +301,19 @@ def get_btest_source( po_hist, be_hist, num_points, params ):
         _source.append( _temp )
 
     # get portfolio data
+    total_alloc = sum( params['alloc'] )
     for index, ticker in enumerate( params['port'] ):
         elem = po_hist[ 'close' ][ ticker ].copy()
         elem /= elem[-num_points]
         elem -= 1
-        elem *= 100
-        if index == 0: sum  = elem
-        else:          sum += elem
-    sum /= len( params['port'] )
+        elem *= 100 * ( params['alloc'][index] / total_alloc )
+        if index == 0: port  = elem
+        else:          port += elem
 
     _temp = pd.DataFrame( {
         'Metric': 'Portfolio',
-        'Date'  : sum.index[-num_points:],
-        'Gain' : sum[-num_points:].values
+        'Date'  : port.index[-num_points:],
+        'Gain' : port[-num_points:].values
     } )
     _source.append( _temp )
 
@@ -320,28 +321,34 @@ def get_btest_source( po_hist, be_hist, num_points, params ):
     source = pd.concat( _source )
 
     # get merged ticker list
-    tickers = [ 'Portfolio' ] + params['bench']
+    tickers = params['bench'] + [ 'Portfolio' ]
 
     # make dataframe
-    info = pd.DataFrame( columns=[ 'Gain', 'Delta', 'Stdev', 'Best', 'Worst', 'MDD' ] )
+    info = pd.DataFrame( columns=[ 'Gain', 'Delta', 'Stdev', 'Best', 'Worst', 'MDD', 'Beta', 'Sharpe' ] )
 
-    port_gain = 0.
+    # consider first bench ticker as reference
+    ref_data = source.loc[ source['Metric'] == params['bench'][0] ]['Gain']
+    ref_gain = ref_data.iloc[-1]
+
+    # for each ticker
     for ticker in tickers:
         
         # get column data
-        data  = source.loc[ source['Metric'] == ticker ]
-
-        # update portfolio gain
-        if ticker == 'Portfolio': port_gain = data[ 'Gain' ].iloc[-1]
+        data  = source.loc[ source['Metric'] == ticker ]['Gain']
 
         # make row
         entry = {}
-        entry[ 'Gain'   ] = data[ 'Gain' ].iloc[-1]
-        entry[ 'Delta'  ] = entry[ 'Gain' ] - port_gain
-        entry[ 'Stdev'  ] = data[ 'Gain' ].std()
-        entry[ 'Best'   ] = data[ 'Gain' ].max()
-        entry[ 'Worst'  ] = data[ 'Gain' ].min()
-        entry[ 'MDD'    ] = compute_mdd( data[ 'Gain' ] )
+        entry[ 'Gain'   ] = data.iloc[-1]
+        entry[ 'Delta'  ] = entry[ 'Gain' ] - ref_gain
+        entry[ 'Stdev'  ] = data.std()
+        entry[ 'Best'   ] = data.max()
+        entry[ 'Worst'  ] = data.min()
+        entry[ 'MDD'    ] = compute_mdd( data )
+        entry[ 'Beta'   ] = ta.BETA( ref_data+100, data+100 ).iloc[-1]
+        
+        dc = (data+100).pct_change(1).dropna()
+        entry[ 'Sharpe' ] = dc.mean() / dc.std() * ( 252**0.5 )
+        
         info.loc[ticker] = entry
         
     return source, info

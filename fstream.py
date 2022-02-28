@@ -32,6 +32,7 @@ from yahooquery import Ticker
 _PARAM_FILE      = "param.json"
 
 _DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
+_DEFAULT_ALLOC   = [ 50, 50 ]
 _DEFAULT_MARKET  = [ '^IXIC', '^GSPC', '^DJI', 'KRW=X' ]
 _DEFAULT_FUTURE  = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
 _DEFAULT_BENCH   = [ 'SPY' ]
@@ -59,6 +60,7 @@ period_delta = {
 }
 params = {
     'port'   : _DEFAULT_PORT,
+    'alloc'  : _DEFAULT_ALLOC,
     'market' : _DEFAULT_MARKET,
     'future' : _DEFAULT_FUTURE,
     'bench'  : _DEFAULT_BENCH,
@@ -168,9 +170,16 @@ def fill_table( _st_list, _st_hist, cache_key ):
         except:
             df.loc[ 'P/E' ][ key ] = NaN
 
-    # add two rows
+    # allocation
+    alo_list = []
+    for key in df.columns:
+        idx = params['port'].index( key )
+        alo_list.append( params['alloc'][idx]*100 )
+
+    # add rows
     df.loc[ 'RSI(14)' ] = rsi_list
     df.loc[ 'CCI(14)' ] = cci_list
+    df.loc[ 'Alloc'   ] = alo_list
 
     return df.transpose()
 
@@ -184,14 +193,23 @@ def highlight_negative( s ):
     is_negative = s < 0
     return [ 'color: red' if i else '' for i in is_negative ]
 
-def save_params():
+def save_params( _params ):
     with open( _PARAM_FILE, 'w' ) as fp:
-        json.dump( params, fp, indent=4 )
+        json.dump( _params, fp, indent=4 )
     return
 
 def load_params():
     with open( _PARAM_FILE, 'r' ) as fp:
         ret = json.load( fp )
+
+    # check allocation
+    if len( ret['alloc'] ) != len( ret['port'] ):
+        # equal allocation
+        eq_alloc = round( 1.0 / len( ret['port'] ), 2 )
+        ret['alloc'] = [ eq_alloc ]*len( ret['port'] )
+        # save here
+        save_params( ret )
+
     return ret
 
 def get_num_points( index, delta ):
@@ -224,34 +242,35 @@ def cb_ticker_list():
 
     # store to parameter and save, then clear cache
     params[ 'port' ] = _verified_list
-    save_params()
+    save_params( params )
+
     st.experimental_singleton.clear()   # clear cache
 
 def cb_gain_period():
     params[ 'gain_period' ] = st.session_state.gainperiod
-    save_params()
+    save_params( params )
 
 def cb_rsi_margin():
     params[ 'RSI_L' ] = st.session_state.rsimargin[0]
     params[ 'RSI_H' ] = st.session_state.rsimargin[1]
-    save_params()
+    save_params( params )
 
 def cb_cci_margin():
     params[ 'CCI_L' ] = st.session_state.ccimargin[0]
     params[ 'CCI_H' ] = st.session_state.ccimargin[1]
-    save_params()
+    save_params( params )
 
 def cb_stock_period():
     params[ 'stock_period' ] = st.session_state.stockperiod
-    save_params()
+    save_params( params )
 
 def cb_market_period():
     params[ 'market_period' ] = st.session_state.marketperiod
-    save_params()
+    save_params( params )
 
 def cb_pattern_period():
     params[ 'pattern_period' ] = st.session_state.patternperiod
-    save_params()
+    save_params( params )
 
 # -------------------------------------------------------------------------------------------------
 # Layout
@@ -269,7 +288,7 @@ if button: st.experimental_singleton.clear()
 
 # check if param file exists
 if os.path.isfile( _PARAM_FILE ): params=load_params()
-else: save_params()
+else: save_params( params )
 
 # portfolio and benchmark
 stock_list   = fetch_tickers    ( params['port'  ] )
