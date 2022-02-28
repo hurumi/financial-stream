@@ -3,9 +3,6 @@
 #
 
 # disable SSL warnings
-from asyncio.windows_events import NULL
-from numpy import NaN, save
-from simplejson import OrderedDict
 import urllib3
 urllib3.disable_warnings( urllib3.exceptions.InsecureRequestWarning )
 
@@ -24,6 +21,7 @@ import datetime as dt
 import fschart  as fc
 
 from yahooquery import Ticker
+from numpy import NaN
 
 # -------------------------------------------------------------------------------------------------
 # Globals
