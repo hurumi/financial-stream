@@ -16,6 +16,7 @@ Consists of four menus: Market, Portfolio, Stock and Pattern
 * Show various numeric information, such as daily change, last price, 52W high and low prices, RSI and CCI
 * Ticker list is editable
 * Show performance chart of portfolio compared to benchmark which is specified in "bench" section of param.json
+* Show several key statistical data including stdev, best, worst, MDD, beta and sharpe ratio for given period
 * Given editable RSI and CCI range, show oversold and overbought tickers
 
 #### Stock menu
