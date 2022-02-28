@@ -14,7 +14,11 @@ Consists of four menus: Market, Portfolio, Stock and Pattern
 
 #### Portfolio menu
 * Show various numeric information, such as daily change, last price, 52W high and low prices, RSI and CCI
-* Ticker list is editable
+* Ticker list is editable and each ticker has the format ticker:alloc, e.g. AAPL:15
+* If the portfolio consists of equal allocation of SPY and QQQ, then the ticker list is as follows:
+```bash
+SPY:50 QQQ:50
+```
 * Show performance chart of portfolio compared to benchmark which is specified in "bench" section of param.json
 * Show several key statistical data including stdev, best, worst, MDD, beta and sharpe ratio for given period
 * Given editable RSI and CCI range, show oversold and overbought tickers
@@ -56,22 +60,14 @@ bearish_pattern = [
 
 ```json
 {
-    "port": [
-        "MSFT",
-        "AAPL",
-        "SPLG",
-        "QQQ",
-        "JEPI",
-        "TSLA"
-    ],
-    "alloc": [
-        0.15,
-        0.15,
-        0.15,
-        0.15,
-        0.15,
-        0.04
-    ],
+    "port": {
+        "MSFT": 15,
+        "AAPL": 15,
+        "SPLG": 15,
+        "QQQ": 15,
+        "JEPI": 15,
+        "TSLA": 4
+    },
     "market": [
         "^IXIC",
         "^GSPC",
@@ -91,7 +87,7 @@ bearish_pattern = [
     "RSI_H": 70,
     "CCI_L": -100,
     "CCI_H": 100,
-    "market_period": "6H",
+    "market_period": "12H",
     "gain_period": "1M",
     "stock_period": "1M",
     "pattern_period": "1M"

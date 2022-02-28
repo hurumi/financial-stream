@@ -301,14 +301,16 @@ def get_btest_source( po_hist, be_hist, num_points, params ):
         _source.append( _temp )
 
     # get portfolio data
-    total_alloc = sum( params['alloc'] )
+    total_alloc = 0
     for index, ticker in enumerate( params['port'] ):
         elem = po_hist[ 'close' ][ ticker ].copy()
         elem /= elem[-num_points]
         elem -= 1
-        elem *= 100 * ( params['alloc'][index] / total_alloc )
+        elem *= 100 * params['port'][ticker]
         if index == 0: port  = elem
         else:          port += elem
+        total_alloc += params['port'][ticker]
+    port /= total_alloc
 
     _temp = pd.DataFrame( {
         'Metric': 'Portfolio',

@@ -29,8 +29,7 @@ from numpy import NaN
 
 _PARAM_FILE      = "param.json"
 
-_DEFAULT_PORT    = [ 'SPY', 'QQQ' ]
-_DEFAULT_ALLOC   = [ 50, 50 ]
+_DEFAULT_PORT    = { 'SPY':50, 'QQQ':50 }
 _DEFAULT_MARKET  = [ '^IXIC', '^GSPC', '^DJI', 'KRW=X' ]
 _DEFAULT_FUTURE  = [ 'NQ=F', 'ES=F', 'YM=F', 'KRW=X' ]
 _DEFAULT_BENCH   = [ 'SPY' ]
@@ -56,21 +55,6 @@ period_delta = {
     '1D' : [  1,  0 ],
     '5D' : [  5,  0 ],
 }
-params = {
-    'port'   : _DEFAULT_PORT,
-    'alloc'  : _DEFAULT_ALLOC,
-    'market' : _DEFAULT_MARKET,
-    'future' : _DEFAULT_FUTURE,
-    'bench'  : _DEFAULT_BENCH,
-    'RSI_L'  : _RSI_THRESHOLD_L,
-    'RSI_H'  : _RSI_THRESHOLD_H,
-    'CCI_L'  : _CCI_THRESHOLD_L,
-    'CCI_H'  : _CCI_THRESHOLD_H,
-    'market_period' : '6H',
-    'gain_period'   : '1M',
-    'stock_period'  : '1M',
-    'pattern_period': '1M'
-}
 bullish_pattern = [ 
     'CDLHAMMER', 
     'CDLINVERTEDHAMMER',
@@ -87,6 +71,20 @@ bearish_pattern = [
     'CDL3BLACKCROWS',
     'CDLDARKCLOUDCOVER'
 ]
+params = {
+    'port'   : _DEFAULT_PORT,
+    'market' : _DEFAULT_MARKET,
+    'future' : _DEFAULT_FUTURE,
+    'bench'  : _DEFAULT_BENCH,
+    'RSI_L'  : _RSI_THRESHOLD_L,
+    'RSI_H'  : _RSI_THRESHOLD_H,
+    'CCI_L'  : _CCI_THRESHOLD_L,
+    'CCI_H'  : _CCI_THRESHOLD_H,
+    'market_period' : '6H',
+    'gain_period'   : '1M',
+    'stock_period'  : '1M',
+    'pattern_period': '1M'
+}
 
 # -------------------------------------------------------------------------------------------------
 # Functions
@@ -171,8 +169,7 @@ def fill_table( _st_list, _st_hist, cache_key ):
     # allocation
     alo_list = []
     for key in df.columns:
-        idx = params['port'].index( key )
-        alo_list.append( params['alloc'][idx]*100 )
+        alo_list.append( params['port'][key] )
 
     # add rows
     df.loc[ 'RSI(14)' ] = rsi_list
@@ -199,15 +196,6 @@ def save_params( _params ):
 def load_params():
     with open( _PARAM_FILE, 'r' ) as fp:
         ret = json.load( fp )
-
-    # check allocation
-    if len( ret['alloc'] ) != len( ret['port'] ):
-        # equal allocation
-        eq_alloc = round( 1.0 / len( ret['port'] ), 2 )
-        ret['alloc'] = [ eq_alloc ]*len( ret['port'] )
-        # save here
-        save_params( ret )
-
     return ret
 
 def get_num_points( index, delta ):
@@ -219,6 +207,14 @@ def get_num_points( index, delta ):
 
     return num_points
 
+def get_shortcut( port_dic ):
+
+    # short-cut variables
+    port_key = list( port_dic )
+    port_str = ' '.join( [ f'{k}:{v}' for k, v in port_dic.items() ] )
+
+    return port_key, port_str
+
 # -------------------------------------------------------------------------------------------------
 # Functions (Callbacks)
 # -------------------------------------------------------------------------------------------------
@@ -227,16 +223,26 @@ def cb_ticker_list():
     _temp_list = st.session_state.tickerlist.split( ' ' )
     
     # validate tickers
-    _verified_list = []
+    _verified_list = {}
     for elem in _temp_list:
-        t = Ticker( elem, verify=False, validate=True )
-        if t.price != {}: _verified_list.append( elem )
+
+        # split ticker and allocation
+        elem_sub = elem.split(':')
+        _ticker = elem_sub[0]
+        if len( elem_sub ) > 1: _alloc = int( elem_sub[1] )
+        else: _alloc = 1
+
+        # validate
+        t = Ticker( _ticker, verify=False, validate=True )
+        if t.price != {}:
+            _verified_list[ _ticker ] = _alloc
 
     # if nothing, use default port
-    if _verified_list == []: _verified_list = _DEFAULT_PORT
+    if _verified_list == {}: _verified_list = _DEFAULT_PORT
 
     # update session string
-    st.session_state.tickerlist = ' '.join( _verified_list )
+    _temp_k, _temp_str = get_shortcut( _verified_list )
+    st.session_state.tickerlist = _temp_str
 
     # store to parameter and save, then clear cache
     params[ 'port' ] = _verified_list
@@ -288,8 +294,11 @@ if button: st.experimental_singleton.clear()
 if os.path.isfile( _PARAM_FILE ): params=load_params()
 else: save_params( params )
 
+# get shortcut variables
+port_k, port_str = get_shortcut( params['port'] )
+
 # portfolio and benchmark
-stock_list   = fetch_tickers    ( params['port'  ] )
+stock_list   = fetch_tickers    ( port_k           )
 bench_list   = fetch_tickers    ( params['bench' ] )
 
 # according to market open
@@ -307,7 +316,7 @@ if menu == 'Portfolio':
     st.subheader( 'Portfolio' )
 
     # enter ticker list
-    ticker_str = st.text_input( "Ticker list", ' '.join( params['port'] ),
+    ticker_str = st.text_input( "Ticker list", port_str,
                                 key='tickerlist',
                                 on_change=cb_ticker_list )
 
@@ -409,7 +418,7 @@ if menu == 'Stock':
     st.subheader( 'Stock chart' )
 
     # stock selector
-    option = st.selectbox( 'Ticker', params['port'], key='stockticker' )
+    option = st.selectbox( 'Ticker', port_k, key='stockticker' )
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
@@ -543,7 +552,7 @@ if menu == 'Pattern':
 
     # historical prices
     stock_hist = fetch_history( stock_list,  period='1y', interval='1d', cache_key='stock' )
-    num_points = get_num_points( stock_hist['close'][params['port'][0]].index, period_delta['1M'] )
+    num_points = get_num_points( stock_hist['close'][port_k[0]].index, period_delta['1M'] )
 
     # ---------------------------------------------------------------------------------------------
     # Pattern logs for all portfolio stocks
@@ -556,7 +565,7 @@ if menu == 'Pattern':
         # bullish patterns
         st.markdown( '##### Bullish patterns' )
         _temp        = []
-        for option in params['port']:
+        for option in port_k:
             for method in bullish_pattern:
                 data = getattr( ta, method )( stock_hist['open'][option][-num_points:], 
                                     stock_hist['high'][option][-num_points:], 
@@ -571,7 +580,7 @@ if menu == 'Pattern':
         # bearish patterns
         st.markdown( '##### Bearish patterns' )
         _temp = []        
-        for option in params['port']:
+        for option in port_k:
             for method in bearish_pattern:
                 data = getattr( ta, method )( stock_hist['open'][option][-num_points:], 
                                     stock_hist['high'][option][-num_points:], 
@@ -590,7 +599,7 @@ if menu == 'Pattern':
     st.subheader( 'Pattern chart' )
 
     # stock selector (share key with stock menu)
-    option = st.selectbox( 'Ticker', params['port'], key='stockticker' )
+    option = st.selectbox( 'Ticker', port_k, key='stockticker' )
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
