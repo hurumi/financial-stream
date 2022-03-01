@@ -4,8 +4,7 @@ Simple financial dashboard using streamlit
 ```bash
 streamlit run fstream.py
 ```
-
-Menus: Market, Portfolio, Stock, Pattern and Fear & Greed
+## Menu description
 
 #### Market menu
 * Show various market charts for relatively short term (max 5D)
@@ -13,6 +12,7 @@ Menus: Market, Portfolio, Stock, Pattern and Fear & Greed
 * When market is open, "market" section is used. Otherwise, "future" section is used
 
 <img src="/images/market.png" width="100%">
+<hr>
 
 #### Portfolio menu
 * Show various numeric information, such as daily change, last price, 52W high and low prices, RSI and CCI
@@ -26,6 +26,7 @@ SPY:50 QQQ:50
 * Given editable RSI and CCI range, show oversold and overbought tickers
 
 <img src="/images/portfolio.png" width="100%">
+<hr>
 
 #### Stock menu
 * Show various charts for single ticker
@@ -33,6 +34,7 @@ SPY:50 QQQ:50
 * For candle chart, you can optionally include Bollinger band, MA20, MA60 and MA120
 
 <img src="/images/stock.png" width="100%">
+<hr>
 
 #### Pattern menu
 * Detect bullish and bearish patterns for recent 1 month
@@ -59,11 +61,13 @@ bearish_pattern = [
 ```
 
 <img src="/images/pattern.png" width="100%">
+<hr>
 
 #### Fear & Greed menu
 * Show Fear & Greed Index and its 3-year trend chart from CNN Business
 
 <img src="/images/feargreed.png" width="100%">
+<hr>
 
 #### Example configuration parameter (param.json)
 
