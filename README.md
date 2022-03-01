@@ -5,7 +5,7 @@ Simple financial dashboard using streamlit
 streamlit run fstream.py
 ```
 
-Consists of four menus: Market, Portfolio, Stock, Pattern and Fear & Greed
+Menus: Market, Portfolio, Stock, Pattern and Fear & Greed
 
 #### Market menu
 * Show various market charts for relatively short term (max 5D)
