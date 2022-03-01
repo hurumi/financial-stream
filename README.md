@@ -12,6 +12,8 @@ Menus: Market, Portfolio, Stock, Pattern and Fear & Greed
 * "market" and "future" sections of param.json specify the tickers
 * When market is open, "market" section is used. Otherwise, "future" section is used
 
+<img src="/images/market.png" width="100%">
+
 #### Portfolio menu
 * Show various numeric information, such as daily change, last price, 52W high and low prices, RSI and CCI
 * Ticker list is editable and each ticker has the format ticker:alloc, e.g. AAPL:15
@@ -23,10 +25,14 @@ SPY:50 QQQ:50
 * Show several key statistical data including stdev, best, worst, MDD, beta and sharpe ratio for given period
 * Given editable RSI and CCI range, show oversold and overbought tickers
 
+<img src="/images/portfolio.png" width="100%">
+
 #### Stock menu
 * Show various charts for single ticker
 * Candle chart, RSI chart, CCI chart and MACD chart
 * For candle chart, you can optionally include Bollinger band, MA20, MA60 and MA120
+
+<img src="/images/stock.png" width="100%">
 
 #### Pattern menu
 * Detect bullish and bearish patterns for recent 1 month
@@ -52,12 +58,12 @@ bearish_pattern = [
 ]
 ```
 
+<img src="/images/pattern.png" width="100%">
+
 #### Fear & Greed menu
 * Show Fear & Greed Index and its 3-year trend chart from CNN Business
 
-#### Example screenshot of pattern menu
-
-<img src="/images/pattern.png" width="100%">
+<img src="/images/feargreed.png" width="100%">
 
 #### Example configuration parameter (param.json)
 
