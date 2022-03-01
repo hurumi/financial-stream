@@ -2,3 +2,4 @@ streamlit
 altair
 pandas
 ta-lib
+beautifulsoup

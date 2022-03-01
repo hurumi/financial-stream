@@ -282,7 +282,7 @@ def cb_pattern_period():
 
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
-menu   = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock', 'Pattern' ) )
+menu   = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock', 'Pattern', 'Fear & Greed' ) )
 button = st.sidebar.button( "Clear Cache" )
 if button: st.experimental_singleton.clear() 
 
@@ -644,3 +644,28 @@ if menu == 'Pattern':
 
     # draw
     st.altair_chart( price_chart, use_container_width=True )
+
+# -------------------------------------------------------------------------------------------------
+# Fear & Greed
+# -------------------------------------------------------------------------------------------------
+
+if menu == 'Fear & Greed':
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader( 'Fear & Greed Index' )
+    with col2:
+        st.write( ' ' )
+        st.caption("Source: [CNN Business](https://money.cnn.com/data/fear-and-greed/)")
+
+    # get source
+    needle_url, fear_list, overtime_url = fc.get_fear_grid_source()
+
+    # needle chart
+    st.image( needle_url, use_column_width='auto' )
+
+    # overtime char
+    st.write( '' )
+    st.markdown( '##### 3-year history' )
+    st.image( overtime_url, use_column_width='auto' )

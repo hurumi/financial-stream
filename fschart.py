@@ -6,10 +6,13 @@
 # Imports
 # -------------------------------------------------------------------------------------------------
 
-from numpy import NaN
 import pandas as pd
 import altair as alt
 import talib  as ta
+import requests
+
+from bs4 import BeautifulSoup
+from numpy import NaN
 
 # -------------------------------------------------------------------------------------------------
 # Globals
@@ -392,3 +395,40 @@ def get_pattern_chart( bullish_histo, bearish_histo ):
     )
 
     return ch
+
+def get_fear_grid_source():
+
+    # local functions
+    def clean_image_url( _url ):
+        idx1 = _url.find ( "'" )
+        idx2 = _url.rfind( "'" )
+        return _url[idx1+1:idx2]
+
+    def sep_fear_index( _str ):
+        _temp1 = _str.split( ':' )
+        _temp2 = _temp1[1].split( '(' )
+        _temp  = [ _temp1[0], int(_temp2[0]), _temp2[1][:-1] ]
+        return _temp
+
+    # CNN money
+    url = 'https://money.cnn.com/data/fear-and-greed/'
+
+    # get data
+    response = requests.get(url)
+    html     = response.text
+    soup     = BeautifulSoup(html, 'html.parser')
+
+    # needle chart
+    needle      = soup.select_one( '#needleChart' )
+    needle_url  = clean_image_url( needle['style'] )
+    needle_list = needle.select( 'li' )
+    fear_list   = []
+    for elem in needle_list:
+        entry = sep_fear_index( elem.get_text() )
+        fear_list.append( entry )
+
+    # over time
+    overtime = soup.select_one( '#feargreedOverTime' )
+    overtime_url = clean_image_url( overtime['style'] )
+
+    return needle_url, fear_list, overtime_url

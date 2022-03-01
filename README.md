@@ -5,7 +5,7 @@ Simple financial dashboard using streamlit
 streamlit run fstream.py
 ```
 
-Consists of four menus: Market, Portfolio, Stock and Pattern
+Consists of four menus: Market, Portfolio, Stock, Pattern and Fear & Greed
 
 #### Market menu
 * Show various market charts for relatively short term (max 5D)
@@ -51,6 +51,9 @@ bearish_pattern = [
     'CDLDARKCLOUDCOVER'
 ]
 ```
+
+#### Fear & Greed menu
+* Show Fear & Greed Index and its 3-year trend chart from CNN Business
 
 #### Example screenshot of pattern menu
 
