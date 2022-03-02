@@ -665,7 +665,13 @@ if menu == 'Fear & Greed':
     # needle chart
     st.image( needle_url, use_column_width='auto' )
 
-    # overtime char
+    # trend chart
     st.write( '' )
+    st.write( '' )
+    st.markdown( '##### 1-week trend' )    
+    fear_chart = fc.get_fear_grid_chart( fear_list )
+    st.altair_chart( fear_chart, use_container_width=True )
+
+    # overtime char
     st.markdown( '##### 3-year history' )
     st.image( overtime_url, use_column_width='auto' )

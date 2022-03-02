@@ -6,9 +6,10 @@
 # Imports
 # -------------------------------------------------------------------------------------------------
 
-import pandas as pd
-import altair as alt
-import talib  as ta
+import pandas   as pd
+import altair   as alt
+import talib    as ta
+import datetime as dt
 import requests
 
 from bs4 import BeautifulSoup
@@ -414,9 +415,9 @@ def get_fear_grid_source():
     url = 'https://money.cnn.com/data/fear-and-greed/'
 
     # get data
-    response = requests.get(url)
+    response = requests.get( url, verify=False )
     html     = response.text
-    soup     = BeautifulSoup(html, 'html.parser')
+    soup     = BeautifulSoup( html, 'html.parser' )
 
     # needle chart
     needle      = soup.select_one( '#needleChart' )
@@ -432,3 +433,60 @@ def get_fear_grid_source():
     overtime_url = clean_image_url( overtime['style'] )
 
     return needle_url, fear_list, overtime_url
+
+def get_fear_grid_chart( fear_list ):
+
+    # Data range
+    e_day = dt.datetime.today()
+    s_day = e_day - dt.timedelta( days=30 )
+
+    # Make data source
+    source_data = [
+        {"Date": s_day, "Index": fear_list[2][1] },
+        {"Date": e_day, "Index": fear_list[0][1] }
+    ]
+
+    source_area = [{
+                "Start": 0,
+                "End": 25,
+                "Status": "Extreme Fear"
+            },
+            {
+                "Start": 25,
+                "End": 50,
+                "Status": "Fear"
+            },
+            {
+                "Start": 50,
+                "End": 75,
+                "Status": "Greed"
+            },
+            {
+                "Start": 75,
+                "End": 100,
+                "Status": "Extreme Greed"
+            },                        
+    ]
+
+    source_data = alt.pd.DataFrame(source_data)
+    source_area = alt.pd.DataFrame(source_area)
+
+    # Line chart
+    w_change = ( fear_list[0][1] - fear_list[2][1] ) / fear_list[2][1] * 100.0
+    line = alt.Chart( source_data ).mark_line( color='#FFFFFF' ).encode(
+        x = alt.X( 'Date' ),
+        y = alt.Y( 'Index', scale=alt.Scale( domain=[ 0,100 ] ), title='Index' ),
+        strokeWidth = alt.value( 3 )
+    ).properties( title = f'Fear & Greed Index Now: {fear_list[0][1]} ({w_change:.2f}%)' )
+
+    # Area chart
+    rect = alt.Chart( source_area ).mark_rect().encode(
+        y  = alt.Y ( 'Start', title='' ),
+        y2 = alt.Y2( 'End',   title='' ),
+        color=alt.Color( 'Status', 
+                         sort=[ 'Extreme Greed', 'Greed', 'Fear', 'Extreme Fear' ], 
+                         scale=alt.Scale( range=[ '#31a348', '#8eba5c', '#d67558', '#c9252f' ] ) 
+        ),
+    )
+
+    return rect + line
