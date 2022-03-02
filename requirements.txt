@@ -2,5 +2,5 @@ streamlit
 altair
 pandas
 ta-lib
-beautifulsoup
+beautifulsoup4
 yahooquery
