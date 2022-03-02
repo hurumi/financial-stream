@@ -571,7 +571,7 @@ def get_fear_grid_trend_chart( fear_list, fg_hist, num_points ):
     line = alt.Chart( source_data ).mark_line( color='#FFFFFF' ).encode(
         x = alt.X( 'Date' ),
         y = alt.Y( 'Index', scale=alt.Scale( domain=[ 0,100 ] ), title='Index' ),
-        strokeWidth = alt.value( 3 )
+        strokeWidth = alt.value( 2 )
     ).properties( title = f'Fear & Greed Index Now: {fear_list[0][1]} ({w_change:.2f}%)' )
 
     # Area chart
