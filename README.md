@@ -65,7 +65,7 @@ bearish_pattern = [
 
 #### Fear & Greed menu
 * Show Fear & Greed Index, its approximated trend and 3-year chart from CNN Business
-* The approximated trend chart is **derived** from 3-year image chart by pixel-level analysis (not accurate!)
+* The approximated trend chart is **derived** from 3-year image chart by pixel-level analysis (warning: not accurate!)
 
 <img src="/images/feargreed.png" width="100%">
 <hr>
