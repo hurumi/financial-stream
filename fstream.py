@@ -659,8 +659,29 @@ if menu == 'Fear & Greed':
         st.write( ' ' )
         st.caption("Source: [CNN Business](https://money.cnn.com/data/fear-and-greed/)")
 
+    # ---------------------------------------------------------------------------------------------
+    # Simple & accurate version
+    # ---------------------------------------------------------------------------------------------
+
+    # # get source
+    # needle_url, fear_list, overtime_url = fc.get_fear_grid_source()
+
+    # # needle chart
+    # st.image( needle_url, use_column_width='auto' )
+
+    # # trend chart
+    # st.write( '' )
+    # st.write( '' )
+    # st.markdown( '##### 1-week trend' )    
+    # fear_chart = fc.get_fear_grid_chart( fear_list )
+    # st.altair_chart( fear_chart, use_container_width=True )
+
+    # ---------------------------------------------------------------------------------------------
+    # Approximation by Image recognition
+    # ---------------------------------------------------------------------------------------------
+
     # get source
-    needle_url, fear_list, overtime_url = fc.get_fear_grid_source()
+    needle_url, fear_list, overtime_url, fg_hist = fc.get_fear_grid_trend_source()
 
     # needle chart
     st.image( needle_url, use_column_width='auto' )
@@ -668,10 +689,21 @@ if menu == 'Fear & Greed':
     # trend chart
     st.write( '' )
     st.write( '' )
-    st.markdown( '##### 1-week trend' )    
-    fear_chart = fc.get_fear_grid_chart( fear_list )
+    st.markdown( '##### Approximated Trend' )    
+
+    # points selector
+    values = [ '1M', '3M', '6M', '1Y' ]
+    period = st.selectbox( 'Period', values )
+
+    num_points = get_num_points( fg_hist.index, period_delta[period] )
+    fear_chart = fc.get_fear_grid_trend_chart( fear_list, fg_hist, num_points )
+    
+    st.write( '' )    
     st.altair_chart( fear_chart, use_container_width=True )
 
-    # overtime char
+    # ---------------------------------------------------------------------------------------------
+    # 3-year history
+    # ---------------------------------------------------------------------------------------------
+
     st.markdown( '##### 3-year history' )
     st.image( overtime_url, use_column_width='auto' )

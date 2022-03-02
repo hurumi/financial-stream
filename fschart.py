@@ -10,10 +10,13 @@ import pandas   as pd
 import altair   as alt
 import talib    as ta
 import datetime as dt
+import numpy    as np
 import requests
 
 from bs4 import BeautifulSoup
 from numpy import NaN
+from io import BytesIO
+from PIL import Image
 
 # -------------------------------------------------------------------------------------------------
 # Globals
@@ -469,6 +472,98 @@ def get_fear_grid_chart( fear_list ):
     ]
 
     source_data = alt.pd.DataFrame(source_data)
+    source_area = alt.pd.DataFrame(source_area)
+
+    # Line chart
+    w_change = ( fear_list[0][1] - fear_list[2][1] ) / fear_list[2][1] * 100.0
+    line = alt.Chart( source_data ).mark_line( color='#FFFFFF' ).encode(
+        x = alt.X( 'Date' ),
+        y = alt.Y( 'Index', scale=alt.Scale( domain=[ 0,100 ] ), title='Index' ),
+        strokeWidth = alt.value( 3 )
+    ).properties( title = f'Fear & Greed Index Now: {fear_list[0][1]} ({w_change:.2f}%)' )
+
+    # Area chart
+    rect = alt.Chart( source_area ).mark_rect().encode(
+        y  = alt.Y ( 'Start', title='' ),
+        y2 = alt.Y2( 'End',   title='' ),
+        color=alt.Color( 'Status', 
+                         sort=[ 'Extreme Greed', 'Greed', 'Fear', 'Extreme Fear' ], 
+                         scale=alt.Scale( range=[ '#31a348', '#8eba5c', '#d67558', '#c9252f' ] ) 
+        ),
+    )
+
+    return rect + line
+
+def get_fear_grid_trend_source():
+
+    needle_url, fear_list, overtime_url = get_fear_grid_source()
+
+    # get image and convert to grayscale
+    response = requests.get( overtime_url, verify=False )
+    img = Image.open( BytesIO( response.content ) ).convert( "L" )
+
+    # convert to numpy array
+    data = 255 - np.array(img).transpose()
+
+    # remove outlier values
+    data[ data != 102 ] = 0
+
+    # find point
+    data_list = []
+    for elem in data:
+        nz_pos = elem.nonzero()[0]
+        if len( nz_pos ) > 1:
+            nz_pos_mean = ( nz_pos[0] + nz_pos[-1] ) / 2
+            nz_pos_mean = int( min( 100, max( 0, 100 - ( nz_pos_mean * 100 / 255 ) ) ) )
+            data_list.append( nz_pos_mean )
+
+    # start date
+    t_n = dt.datetime.today()
+
+    # build final results
+    n = len( data_list )
+    date_list = []
+    for idx, elem in enumerate( data_list ):
+        delta = 365*3 - int( 365*3*idx/(n-1) )
+        t_p = t_n - dt.timedelta( days=delta )
+        date_list.append( t_p )
+
+    fg_hist = pd.DataFrame( index = date_list )
+    fg_hist[ 'Index' ] = data_list
+
+    return needle_url, fear_list, overtime_url, fg_hist
+
+def get_fear_grid_trend_chart( fear_list, fg_hist, num_points ):
+
+    # line data
+    source_data = pd.DataFrame( {
+        'Date':  fg_hist.index[-num_points:],
+        'Index': fg_hist['Index'][-num_points:].values
+    } )
+
+    # Area data
+    source_area = [{
+                "Start": 0,
+                "End": 25,
+                "Status": "Extreme Fear"
+            },
+            {
+                "Start": 25,
+                "End": 50,
+                "Status": "Fear"
+            },
+            {
+                "Start": 50,
+                "End": 75,
+                "Status": "Greed"
+            },
+            {
+                "Start": 75,
+                "End": 100,
+                "Status": "Extreme Greed"
+            },                        
+    ]
+
     source_area = alt.pd.DataFrame(source_area)
 
     # Line chart
