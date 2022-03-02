@@ -3,3 +3,4 @@ altair
 pandas
 ta-lib
 beautifulsoup
+yahooquery
