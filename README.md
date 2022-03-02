@@ -64,7 +64,7 @@ bearish_pattern = [
 <hr>
 
 #### Fear & Greed menu
-* Show Fear & Greed Index and its 3-year trend chart from CNN Business
+* Show Fear & Greed Index, its 1-week trend and 3-year chart from CNN Business
 
 <img src="/images/feargreed.png" width="100%">
 <hr>
