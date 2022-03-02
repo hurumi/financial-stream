@@ -567,7 +567,7 @@ def get_fear_grid_trend_chart( fear_list, fg_hist, num_points ):
     source_area = alt.pd.DataFrame(source_area)
 
     # Line chart
-    w_change = ( fear_list[0][1] - fear_list[2][1] ) / fear_list[2][1] * 100.0
+    w_change = ( fg_hist['Index'][-1] - fg_hist['Index'][-num_points] ) / fg_hist['Index'][-num_points] * 100.0
     line = alt.Chart( source_data ).mark_line( color='#FFFFFF' ).encode(
         x = alt.X( 'Date' ),
         y = alt.Y( 'Index', scale=alt.Scale( domain=[ 0,100 ] ), title='Index' ),
