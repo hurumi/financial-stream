@@ -508,28 +508,39 @@ def get_fear_grid_trend_source():
     # remove outlier values
     data[ data != 102 ] = 0
 
+    # vertical pixel range in image
+    y_s = 10 
+    y_e = 255
+    y_l = y_e - y_s
+
     # find point
-    data_list = []
+    data_list   = []
     for elem in data:
         nz_pos = elem.nonzero()[0]
         if len( nz_pos ) > 1:
             nz_pos_mean = ( nz_pos[0] + nz_pos[-1] ) / 2
-            nz_pos_mean = int( min( 100, max( 0, 100 - ( nz_pos_mean * 100 / 255 ) ) ) )
+            nz_pos_mean = int( min( 100, max( 0, 100 - ( ( nz_pos_mean-y_s ) * 100 / y_l ) ) ) )
             data_list.append( nz_pos_mean )
 
-    # start date
+   # start date
     t_n = dt.datetime.today()
 
     # build final results
     n = len( data_list )
-    date_list = []
+    source = {}
     for idx, elem in enumerate( data_list ):
         delta = 365*3 - int( 365*3*idx/(n-1) )
         t_p = t_n - dt.timedelta( days=delta )
-        date_list.append( t_p )
+        source[ t_p ] = elem
 
-    fg_hist = pd.DataFrame( index = date_list )
-    fg_hist[ 'Index' ] = data_list
+    fg_hist = pd.Series( source )
+
+    # insert true values
+    fg_hist[t_n                       ] = fear_list[0][1]
+    fg_hist[t_n-dt.timedelta(days=  1)] = fear_list[1][1]
+    fg_hist[t_n-dt.timedelta(days=  7)] = fear_list[2][1]
+    fg_hist[t_n-dt.timedelta(days= 30)] = fear_list[3][1]
+    fg_hist[t_n-dt.timedelta(days=365)] = fear_list[4][1]
 
     return needle_url, fear_list, overtime_url, fg_hist
 
@@ -538,7 +549,7 @@ def get_fear_grid_trend_chart( fear_list, fg_hist, num_points ):
     # line data
     source_data = pd.DataFrame( {
         'Date':  fg_hist.index[-num_points:],
-        'Index': fg_hist['Index'][-num_points:].values
+        'Index': fg_hist[-num_points:].values
     } )
 
     # Area data
@@ -567,11 +578,12 @@ def get_fear_grid_trend_chart( fear_list, fg_hist, num_points ):
     source_area = alt.pd.DataFrame(source_area)
 
     # Line chart
-    w_change = ( fg_hist['Index'][-1] - fg_hist['Index'][-num_points] ) / fg_hist['Index'][-num_points] * 100.0
+    w_change = ( fg_hist[-1] - fg_hist[-num_points] ) / fg_hist[-num_points] * 100.0
     line = alt.Chart( source_data ).mark_line( color='#FFFFFF' ).encode(
         x = alt.X( 'Date' ),
         y = alt.Y( 'Index', scale=alt.Scale( domain=[ 0,100 ] ), title='Index' ),
-        strokeWidth = alt.value( 2 )
+        strokeWidth = alt.value( 2 ),
+        tooltip = [ 'Date', 'Index' ],
     ).properties( title = f'Fear & Greed Index Now: {fear_list[0][1]} ({w_change:.2f}%)' )
 
     # Area chart
