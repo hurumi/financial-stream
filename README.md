@@ -17,6 +17,7 @@ streamlit run fstream.py
 #### Portfolio menu
 * Show various numeric information, such as daily change, last price, 52W high and low prices, RSI and CCI
 * Ticker list is editable and each ticker has the format ticker:alloc, e.g. AAPL:15
+* (Note) alloc means just weighting factor, not the number of stocks
 * If the portfolio consists of equal allocation of SPY and QQQ, then the ticker list is as follows:
 ```bash
 SPY:50 QQQ:50
