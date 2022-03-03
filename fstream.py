@@ -19,6 +19,7 @@ import os
 import json
 import datetime as dt
 import fschart  as fc
+import argparse
 
 from yahooquery import Ticker
 from numpy import NaN
@@ -189,13 +190,28 @@ def highlight_negative( s ):
     return [ 'color: red' if i else '' for i in is_negative ]
 
 def save_params( _params ):
-    with open( _PARAM_FILE, 'w' ) as fp:
-        json.dump( _params, fp, indent=4 )
+
+    # save to session
+    st.session_state.params = _params
+
+    # save to file
+    if args.nosave == False:
+        with open( _PARAM_FILE, 'w' ) as fp:
+            json.dump( _params, fp, indent=4 )
+
     return
 
 def load_params():
-    with open( _PARAM_FILE, 'r' ) as fp:
-        ret = json.load( fp )
+
+    # check if first load, if so, load from file
+    if 'params' not in st.session_state:
+        with open( _PARAM_FILE, 'r' ) as fp:
+            ret = json.load( fp )
+        st.session_state.params = ret
+    # otherwise, load from session
+    else:
+        ret = st.session_state.params
+
     return ret
 
 def get_num_points( index, delta ):
@@ -275,6 +291,14 @@ def cb_market_period():
 def cb_pattern_period():
     params[ 'pattern_period' ] = st.session_state.patternperiod
     save_params( params )
+
+# -------------------------------------------------------------------------------------------------
+# Commandline arguments
+# -------------------------------------------------------------------------------------------------
+
+parser = argparse.ArgumentParser( description='Financial Stream' )
+parser.add_argument( '--nosave', action='store_true' )
+args = parser.parse_args()
 
 # -------------------------------------------------------------------------------------------------
 # Layout
