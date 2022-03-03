@@ -46,6 +46,16 @@ attr_list = {
     'fiftyTwoWeekHigh':'52W_H(%)',
     'fiftyTwoWeekLow':'52W_L(%)',
 }
+attr_color_scheme = {
+    'Change(%)': [ [ -10000,   0, 'red'   ], [  0, 10000, 'green' ] ],
+    'Price'    : [ ],
+    'P/E'      : [ [ -10000,  30, 'green' ], [ 70, 10000, 'red'   ] ],
+    '52W_L(%)' : [                           [ 30, 10000, 'red'   ] ],
+    '52W_H(%)' : [ [ -10000, -15, 'red'   ] ],
+    'RSI(14)'  : [ [ -10000,  30, 'red'   ], [ 70, 10000, 'red'   ] ],
+    'CCI(14)'  : [ [ -10000,-100, 'red'   ], [100, 10000, 'red'   ] ],
+    'Alloc'    : [ ],
+}
 period_delta = {
     '1M' : [  30, 0 ],
     '3M' : [  90, 0 ],
@@ -81,10 +91,10 @@ params = {
     'RSI_H'  : _RSI_THRESHOLD_H,
     'CCI_L'  : _CCI_THRESHOLD_L,
     'CCI_H'  : _CCI_THRESHOLD_H,
-    'market_period' : '6H',
-    'gain_period'   : '1M',
-    'stock_period'  : '1M',
-    'pattern_period': '1M'
+    'market_period' : '12H',
+    'gain_period'   : '3M',
+    'stock_period'  : '3M',
+    'pattern_period': '3M'
 }
 
 # -------------------------------------------------------------------------------------------------
@@ -184,10 +194,23 @@ def is_market_open():
     if _temp.price['aapl']['marketState'] == 'REGULAR': return True
     return False
 
-def highlight_negative( s ):
+def highlight_color( s ):
 
-    is_negative = s < 0
-    return [ 'color: red' if i else '' for i in is_negative ]
+    try:
+        # get color scheme for given column
+        scheme = attr_color_scheme[ s.name ]
+
+        # build color list
+        color_list = []
+        for elem in s:
+            color_str = ''
+            for cond in scheme:
+                if elem >= cond[0] and elem < cond[1]: color_str = f'color: {cond[2]}'
+            color_list.append( color_str )
+    except:
+        color_list = [ '' ]*len( s )
+
+    return color_list
 
 def save_params( _params ):
 
@@ -203,7 +226,7 @@ def save_params( _params ):
 
 def load_params():
 
-    # check if first load, if so, load from file
+    # check if first load, load from file
     if 'params' not in st.session_state:
         with open( _PARAM_FILE, 'r' ) as fp:
             ret = json.load( fp )
@@ -356,7 +379,7 @@ if menu == 'Portfolio':
 
     # fill data from stock list
     df  = fill_table( stock_list, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
-    dfs = df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
+    dfs = df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
     st.write( dfs )
 
     # ---------------------------------------------------------------------------------------------
@@ -422,14 +445,14 @@ if menu == 'Portfolio':
     st.markdown( '##### Oversold' )
     st.text( f'RSI<{rsi_L} and CCI<{cci_L}' )
     if len( oversold_df.index ) > 0:
-        dfs = oversold_df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
+        dfs = oversold_df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
         st.write( dfs )
 
     # sub title
     st.markdown( '##### Overbought' )
     st.text( f'RSI>{rsi_H} and CCI>{cci_H}' )
     if len( overbought_df.index ) > 0:
-        dfs = overbought_df.style.apply( highlight_negative, axis=1 ).format( precision=2, na_rep='-' )
+        dfs = overbought_df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
         st.write( dfs )
 
 # -------------------------------------------------------------------------------------------------
