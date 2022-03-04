@@ -242,7 +242,7 @@ def get_num_points( index, delta ):
     last = index[-1]
     d    = dt.timedelta( days  = delta[0] )
     h    = dt.timedelta( hours = delta[1] )
-    num_points = len( index [ index > ( last - d - h ) ] )
+    num_points = len( index [ index >= ( last - d - h ) ] )
 
     return num_points
 
@@ -253,6 +253,46 @@ def get_shortcut( port_dic ):
     port_str = ' '.join( [ f'{k}:{v}' for k, v in port_dic.items() ] )
 
     return port_key, port_str
+
+def get_port_gains():
+
+    # get latest value
+    last_price = [ stock_hist['close'][option][-1] for option in port_k ]
+
+    # portfolio allocation
+    port_alloc  = [ params['port'][option] for option in port_k ]
+    total_alloc = sum( port_alloc )
+        
+    # for each time delta
+    time_delta = [ 1, 7, 30, 90, 180, 365 ]
+    port_gain  = []
+    for delta in time_delta:
+
+        # get historic price
+        prev_price = []
+        for option in port_k:
+            num_points = get_num_points( stock_hist['close'][option].index, [ delta, 0 ] )
+            prev_price.append( stock_hist['close'][option][-num_points] )
+
+        # compute gains
+        prev_gain = []
+        for index, price in enumerate( prev_price ):
+            prev_gain.append( ( last_price[index]-price )/price*port_alloc[index]/total_alloc )
+
+        # final gain
+        port_gain.append( sum( prev_gain )*100. )
+    
+    return port_gain
+
+def get_gain_str( name, value ):
+
+    if value >=0:
+        temp_str = f'<b>{name}</b>: <span style="color:green">{value:.2f}%</span>'
+    else:
+        temp_str = f'<b>{name}</b>: <span style="color:red">{value:.2f}%</span>'
+
+    temp_str += '&nbsp;'*6
+    return temp_str
 
 # -------------------------------------------------------------------------------------------------
 # Functions (Callbacks)
@@ -381,6 +421,16 @@ if menu == 'Portfolio':
     df  = fill_table( stock_list, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
     dfs = df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
     st.write( dfs )
+
+    # get portfolio gains (1D, 1W, 1M, 3M, 6M, 1Y)
+    port_gain_list = get_port_gains()
+    port_gain_str  = get_gain_str( '1D', port_gain_list[0] )
+    port_gain_str += get_gain_str( '1W', port_gain_list[1] )
+    port_gain_str += get_gain_str( '1M', port_gain_list[2] )
+    port_gain_str += get_gain_str( '3M', port_gain_list[3] )
+    port_gain_str += get_gain_str( '6M', port_gain_list[4] )
+    port_gain_str += get_gain_str( '1Y', port_gain_list[5] )
+    st.markdown( '<p style="text-align: center;">'+port_gain_str+'</p>', True )
 
     # ---------------------------------------------------------------------------------------------
     # Backtest
