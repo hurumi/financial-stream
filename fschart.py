@@ -542,6 +542,9 @@ def get_fear_grid_trend_source():
     fg_hist[t_n-dt.timedelta(days= 30)] = fear_list[3][1]
     fg_hist[t_n-dt.timedelta(days=365)] = fear_list[4][1]
 
+    # sort by idnx
+    fg_hist.sort_index( inplace=True )
+
     return needle_url, fear_list, overtime_url, fg_hist
 
 def get_fear_grid_trend_chart( fear_list, fg_hist, num_points ):
