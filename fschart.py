@@ -509,7 +509,7 @@ def get_fear_grid_trend_source():
     data[ data != 102 ] = 0
 
     # vertical pixel range in image
-    y_s = 10 
+    y_s = 10
     y_e = 255
     y_l = y_e - y_s
 
@@ -518,9 +518,9 @@ def get_fear_grid_trend_source():
     for elem in data:
         nz_pos = elem.nonzero()[0]
         if len( nz_pos ) > 1:
-            nz_pos_mean = ( nz_pos[0] + nz_pos[-1] ) / 2
-            nz_pos_mean = int( min( 100, max( 0, 100 - ( ( nz_pos_mean-y_s ) * 100 / y_l ) ) ) )
-            data_list.append( nz_pos_mean )
+            nz_pos_pred = np.median( nz_pos )
+            nz_pos_pred  = int( min( 100, max( 0, 100 - ( ( nz_pos_pred-y_s ) * 100 / y_l ) ) ) )
+            data_list.append( nz_pos_pred )
 
    # start date
     t_n = dt.datetime.today()

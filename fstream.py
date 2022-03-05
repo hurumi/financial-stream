@@ -287,11 +287,13 @@ def get_port_gains():
 def get_gain_str( name, value ):
 
     if value >=0:
-        temp_str = f'<b>{name}</b>: <span style="color:green">{value:.2f}%</span>'
+        style_str = f'<button style="border-radius:10px;border:none;color:green;background-color:palegreen">'
+        temp_str  = f'<b>{name}</b>: {style_str} &#8593;&nbsp;{value:.2f}%</button>'
     else:
-        temp_str = f'<b>{name}</b>: <span style="color:red">{value:.2f}%</span>'
+        style_str = f'<button style="border-radius:10px;border:none;color:red;background-color:mistyrose">'
+        temp_str = f'<b>{name}</b>: {style_str} &#8595;&nbsp;{-value:.2f}%</button>'
 
-    temp_str += '&nbsp;'*6
+    temp_str += '&nbsp;'*5
     return temp_str
 
 # -------------------------------------------------------------------------------------------------
