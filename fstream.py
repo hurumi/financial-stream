@@ -554,26 +554,26 @@ if menu == 'Stock':
     with col3:
         ma60_flag  = st.checkbox( 'MA60 (GREEN)' )
     with col4:
-        ma120_flag  = st.checkbox( 'MA120 (ORANGE)' )
+        ma120_flag  = st.checkbox( 'MA120 (BLUE)' )
 
     # price chart
     price_chart = fc.get_candle_chart( stock_list, stock_hist, option, num_points )
 
     # bollinger band chart
     if bband_flag:
-        price_chart += fc.get_bband_chart( stock_hist, option, num_points )
+        price_chart = fc.get_bband_chart( stock_hist, option, num_points ) + price_chart
 
     # MA20 chart
     if ma20_flag:
-        price_chart += fc.get_ma_chart( stock_hist, option, num_points, 20, 'red' )
+        price_chart = fc.get_ma_chart( stock_hist, option, num_points, 20, 'red' ) + price_chart
 
     # MA60 chart
     if ma60_flag:
-        price_chart += fc.get_ma_chart( stock_hist, option, num_points, 60, 'green' )
+        price_chart = fc.get_ma_chart( stock_hist, option, num_points, 60, 'green' ) + price_chart
 
     # MA120 chart
     if ma120_flag:
-        price_chart += fc.get_ma_chart( stock_hist, option, num_points, 120, 'orange' )
+        price_chart = fc.get_ma_chart( stock_hist, option, num_points, 120, 'blue' ) + price_chart
 
     # draw
     st.altair_chart( price_chart, use_container_width=True )

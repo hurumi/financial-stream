@@ -57,7 +57,7 @@ def get_price_chart( st_list, st_hist, ticker, num_points ):
         ch = alt.Chart( source1 ).mark_line().encode(
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q', scale=alt.Scale( zero=False )  ),
-            tooltip = [ 'Date', 'Price' ]
+            tooltip = [ 'Date', alt.Tooltip( 'Price', format='.2f' ) ]
         )
 
         prev_close = st_list.price[ ticker ][ 'regularMarketPreviousClose' ]
@@ -74,7 +74,6 @@ def get_price_chart( st_list, st_hist, ticker, num_points ):
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q' ),
             color=alt.value("#FFAA00"),
-            tooltip = [ 'Date', 'Price' ]
         ).properties( title = f'{title}: {cur_price:.2f} ({delta:.2f}%)' )
 
         return ch+prev
@@ -101,7 +100,7 @@ def get_candle_chart( st_list, st_hist, ticker, num_points ):
         base = alt.Chart( source1 ).encode(
             x = alt.X( 'Date:T' ),
             color=open_close_color,
-            tooltip = [ 'Date', 'Close' ]
+            tooltip = [ 'Date', alt.Tooltip( 'Close', format='.2f' ) ]
         )
 
         # rule
@@ -138,7 +137,6 @@ def get_candle_chart( st_list, st_hist, ticker, num_points ):
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q' ),
             color=alt.value("#FFAA00"),
-            tooltip = [ 'Date', 'Price' ]
         ).properties( title = f'{title}: {cur_price:.2f} ({delta:.2f}%)' )
 
         return ch+prev        
@@ -146,29 +144,27 @@ def get_candle_chart( st_list, st_hist, ticker, num_points ):
 def get_bband_chart( st_hist, ticker, num_points ):
 
     bband_up, bband_mid, bband_low = ta.BBANDS( st_hist['close'][ ticker ], 20, 2 )
-    source1 = pd.DataFrame( {
-        'Metric': 'BBAND_UPPER',
-        'Date'  : bband_up.index[-num_points:],
-        'Price' : bband_up[-num_points:].values
+
+    # prepare source
+    source = pd.DataFrame( {
+        'Date' : bband_up.index[-num_points:],
+        'Upper': bband_up[-num_points:].values,
+        'Mid'  : bband_mid[-num_points:].values,
+        'Lower': bband_low[-num_points:].values,
     } )
-    source2 = pd.DataFrame( {
-        'Metric': 'BBAND_MIDDLE',
-        'Date'  : bband_mid.index[-num_points:],
-        'Price' : bband_mid[-num_points:].values
-    } )
-    source3 = pd.DataFrame( {
-        'Metric': 'BBAND_LOWER',
-        'Date'  : bband_low.index[-num_points:],
-        'Price' : bband_low[-num_points:].values
-    } )
-    source = pd.concat( [ source1, source2, source3 ] )
-    ch = alt.Chart( source ).mark_line( strokeDash=[2,3] ).encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'Price', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Price' ],
-        color = alt.Color( 'Metric', legend=None ),
+    
+    # generate chart
+    ch = alt.Chart( source ).mark_area( opacity=0.1, color='blue' ).encode(
+        x  = alt.X ( 'Date'  ),
+        y  = alt.Y ( 'Upper' ),
+        y2 = alt.Y2( 'Lower' ),
     )
-    return ch
+    mv = alt.Chart( source ).mark_line( strokeDash=[2,3], color='black', opacity=0.5 ).encode(
+        x = alt.X( 'Date' ),
+        y = alt.Y( 'Mid'  ),
+
+    )
+    return ch + mv
 
 def get_ma_chart( st_hist, ticker, num_points, period, colorstr ):
 
@@ -181,7 +177,6 @@ def get_ma_chart( st_hist, ticker, num_points, period, colorstr ):
     ch = alt.Chart( source ).mark_line().encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Price', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Price' ],
         color = alt.value( colorstr ),
         strokeWidth = alt.value( 1 ),
     )
@@ -197,7 +192,7 @@ def get_rsi_chart( st_hist, ticker, num_points, params ):
     ch = alt.Chart( source ).mark_line( point=alt.OverlayMarkDef() ).encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
-        tooltip = [ 'Date', 'RSI' ]
+        tooltip = [ 'Date', alt.Tooltip( 'RSI', format='.2f' ) ]
     ).properties( title = f'RSI(14): {rsi_hist[-1]:.2f}' )
     source_up = pd.DataFrame( {
         'Date': rsi_hist.index[-num_points:],
@@ -229,7 +224,7 @@ def get_cci_chart( st_hist, ticker, num_points, params ):
     ch = alt.Chart( source ).mark_line( point=alt.OverlayMarkDef() ).encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
-        tooltip = [ 'Date', 'CCI' ]
+        tooltip = [ 'Date', alt.Tooltip( 'CCI', format='.2f' ) ]
     ).properties( title = f'CCI(14): {cci_hist[-1]:.2f}' )
     source_up = pd.DataFrame( {
         'Date': cci_hist.index[-num_points:],
@@ -274,13 +269,13 @@ def get_macd_charts( st_hist, ticker, num_points ):
     ch1 = alt.Chart( source ).mark_line( point=alt.OverlayMarkDef() ).encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Value' ],
+        tooltip = [ 'Metric', 'Date', alt.Tooltip( 'Value', format='.2f' ) ],
         color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
     ).properties( title = 'MACD' )
     ch2 = alt.Chart( source3 ).mark_bar().encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Hist' ),
-        tooltip = [ 'Date', 'Hist' ],
+        tooltip = [ 'Date', alt.Tooltip( 'Hist', format='.2f' ) ],
         color=alt.condition(
             alt.datum.Hist > 0,
             alt.value("green"),  # The positive color
@@ -368,7 +363,7 @@ def get_btest_chart( source ):
     ch = alt.Chart( source ).mark_line().encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Gain', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Metric', 'Date', 'Gain' ],
+        tooltip = [ 'Metric', 'Date', alt.Tooltip( 'Gain', format='.2f' ) ],
         color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
     )
 
@@ -394,7 +389,7 @@ def get_pattern_chart( bullish_histo, bearish_histo ):
     ch = alt.Chart( source ).mark_point( size=150 ).encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Value', scale=alt.Scale( zero=False )  ),
-        tooltip = [ 'Signal', 'Date', 'Value' ],
+        tooltip = [ 'Signal', 'Date' ],
         color = alt.Color( 'Signal', legend=alt.Legend( orient="top-left" ), scale=alt.Scale(domain=domain, range=range_) )
     )
 
