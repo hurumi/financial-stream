@@ -23,14 +23,11 @@ from PIL import Image
 # Globals
 # -------------------------------------------------------------------------------------------------
 
+# Priority: (1) abbr_list (2) longName field (3) shortName field
 abbr_list = { 
-    '^IXIC':'NASDAQ Composite',
-    '^GSPC':'S&P 500',
-    '^DJI':'DOW Jones Average',    
     'NQ=F':'NASDAQ Futures',
     'ES=F':'S&P 500 Futures',
     'YM=F':'DOW Jones Futures',
-    'KRW=X':'USD/KRW',
 }
 
 # -------------------------------------------------------------------------------------------------
@@ -41,6 +38,13 @@ def compute_mdd( data ):
 
     mdd = ( data - data.cummax() ).min()
     return mdd
+
+def get_display_name( _ticker, _st_info ):
+
+    if _ticker in abbr_list: return abbr_list[ _ticker ]
+    if _st_info['price'][_ticker]['longName' ] != None: return _st_info['price'][_ticker]['longName' ]
+    if _st_info['price'][_ticker]['shortName'] != None: return _st_info['price'][_ticker]['shortName']
+    return _ticker
 
 # -------------------------------------------------------------------------------------------------
 # Chart Functions
@@ -70,7 +74,7 @@ def get_price_chart( st_info, st_hist, ticker, num_points ):
         } )
 
         delta = ( cur_price - prev_close ) / prev_close * 100.
-        title = abbr_list[ ticker ] if ticker in abbr_list else ticker
+        title = get_display_name( ticker, st_info )
         prev = alt.Chart( source2 ).mark_line().encode(
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q' ),
@@ -133,7 +137,7 @@ def get_candle_chart( st_info, st_hist, ticker, num_points ):
         } )
 
         delta = ( cur_price - prev_close ) / prev_close * 100.
-        title = abbr_list[ ticker ] if ticker in abbr_list else ticker
+        title = get_display_name( ticker, st_info )
         prev = alt.Chart( source2 ).mark_line().encode(
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q' ),
@@ -433,67 +437,8 @@ def get_fear_grid_source():
 
     return needle_url, fear_list, overtime_url
 
-def get_fear_grid_chart( fear_list ):
-
-    # Data range
-    e_day = dt.datetime.today()
-    s_day = e_day - dt.timedelta( days=30 )
-
-    # Make data source
-    source_data = [
-        {"Date": s_day, "Index": fear_list[2][1] },
-        {"Date": e_day, "Index": fear_list[0][1] }
-    ]
-
-    source_area = [{
-                "Start": 0,
-                "End": 25,
-                "Status": "Extreme Fear"
-            },
-            {
-                "Start": 25,
-                "End": 50,
-                "Status": "Fear"
-            },
-            {
-                "Start": 50,
-                "End": 75,
-                "Status": "Greed"
-            },
-            {
-                "Start": 75,
-                "End": 100,
-                "Status": "Extreme Greed"
-            },                        
-    ]
-
-    source_data = alt.pd.DataFrame(source_data)
-    source_area = alt.pd.DataFrame(source_area)
-
-    # Line chart
-    w_change = ( fear_list[0][1] - fear_list[2][1] ) / fear_list[2][1] * 100.0
-    line = alt.Chart( source_data ).mark_line( color='#FFFFFF' ).encode(
-        x = alt.X( 'Date' ),
-        y = alt.Y( 'Index', scale=alt.Scale( domain=[ 0,100 ] ), title='Index' ),
-        strokeWidth = alt.value( 3 )
-    ).properties( title = f'Fear & Greed Index Now: {fear_list[0][1]} ({w_change:.2f}%)' )
-
-    # Area chart
-    rect = alt.Chart( source_area ).mark_rect().encode(
-        y  = alt.Y ( 'Start', title='' ),
-        y2 = alt.Y2( 'End',   title='' ),
-        color=alt.Color( 'Status', 
-                         sort=[ 'Extreme Greed', 'Greed', 'Fear', 'Extreme Fear' ], 
-                         scale=alt.Scale( range=[ '#31a348', '#8eba5c', '#d67558', '#c9252f' ] ) 
-        ),
-    )
-
-    return rect + line
-
 @st.experimental_singleton
-def get_fear_grid_trend_source():
-
-    needle_url, fear_list, overtime_url = get_fear_grid_source()
+def get_fear_grid_analysis( fear_list, overtime_url ):
 
     # get image and convert to grayscale
     response = requests.get( overtime_url, verify=False )
@@ -541,6 +486,16 @@ def get_fear_grid_trend_source():
 
     # sort by idnx
     fg_hist.sort_index( inplace=True )
+
+    return fg_hist
+
+def get_fear_grid_trend_source():
+
+    # get basic information
+    needle_url, fear_list, overtime_url = get_fear_grid_source()
+
+    # detect history
+    fg_hist = get_fear_grid_analysis( fear_list, overtime_url )
 
     return needle_url, fear_list, overtime_url, fg_hist
 

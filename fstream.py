@@ -10,7 +10,6 @@ urllib3.disable_warnings( urllib3.exceptions.InsecureRequestWarning )
 # Imports
 # -------------------------------------------------------------------------------------------------
 
-import requests
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -774,23 +773,6 @@ if menu == 'Fear & Greed':
     with col2:
         st.write( ' ' )
         st.caption("Source: [CNN Business](https://money.cnn.com/data/fear-and-greed/)")
-
-    # ---------------------------------------------------------------------------------------------
-    # Simple & accurate version
-    # ---------------------------------------------------------------------------------------------
-
-    # # get source
-    # needle_url, fear_list, overtime_url = fc.get_fear_grid_source()
-
-    # # needle chart
-    # st.image( needle_url, use_column_width='auto' )
-
-    # # trend chart
-    # st.write( '' )
-    # st.write( '' )
-    # st.markdown( '##### 1-week trend' )    
-    # fear_chart = fc.get_fear_grid_chart( fear_list )
-    # st.altair_chart( fear_chart, use_container_width=True )
 
     # ---------------------------------------------------------------------------------------------
     # Approximation by Image recognition
