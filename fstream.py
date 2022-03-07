@@ -38,6 +38,19 @@ _RSI_THRESHOLD_H =   70
 _CCI_THRESHOLD_L = -100
 _CCI_THRESHOLD_H =  100
 
+sector_tickers = {
+    'XLK': 'Technology',
+    'XLC': 'Communication Services',
+    'XLY': 'Consumer Cyclical',
+    'XLF': 'Financial',
+    'XLV': 'Healthcare',
+    'XLP': 'Consumer Defensive',
+    'XLI': 'Industrials',
+    'XLRE':'Real Estate',
+    'XLE': 'Energy', 
+    'XLU': 'Utilities', 
+    'XLB': 'Materials', 
+}
 attr_list = { 
     'regularMarketChangePercent':'Change(%)', 
     'regularMarketPrice':'Price',
@@ -64,6 +77,7 @@ period_delta = {
     '12H': [  0, 12 ],
     '1D' : [  1,  0 ],
     '5D' : [  5,  0 ],
+    '1W' : [  7,  0 ],    
 }
 bullish_pattern = [ 
     'CDLHAMMER', 
@@ -91,6 +105,7 @@ params = {
     'CCI_L'  : _CCI_THRESHOLD_L,
     'CCI_H'  : _CCI_THRESHOLD_H,
     'market_period' : '12H',
+    'sector_period' : '1W',
     'gain_period'   : '3M',
     'stock_period'  : '3M',
     'pattern_period': '3M'
@@ -370,6 +385,10 @@ def cb_market_period():
     params[ 'market_period' ] = st.session_state.marketperiod
     save_params( params )
 
+def cb_sector_period():
+    params[ 'sector_period' ] = st.session_state.sectorperiod
+    save_params( params )
+
 def cb_pattern_period():
     params[ 'pattern_period' ] = st.session_state.patternperiod
     save_params( params )
@@ -388,7 +407,7 @@ args = parser.parse_args()
 
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
-menu   = st.sidebar.radio( "MENU", ( 'Market', 'Portfolio', 'Stock', 'Pattern', 'Fear & Greed' ) )
+menu   = st.sidebar.radio( "MENU", ( 'Market', 'Sector', 'Portfolio', 'Stock', 'Pattern', 'Fear & Greed' ) )
 button = st.sidebar.button( "Clear Cache" )
 if button: st.experimental_singleton.clear() 
 
@@ -657,6 +676,50 @@ if menu == 'Market':
         num_points = get_num_points( market_hist['close'][option].index, period_delta[period] )
         market_chart = fc.get_price_chart( market_info, market_hist, option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
+
+# -------------------------------------------------------------------------------------------------
+# Sector
+# -------------------------------------------------------------------------------------------------
+
+if menu == 'Sector':
+
+    # sub title
+    st.subheader( 'Sector chart' )
+
+    # points selector
+    values = [ '1D', '1W', '1M', '3M', '6M', '1Y' ]
+    period = st.selectbox( 'Period', values, 
+                            index=values.index( params['sector_period'] ), 
+                            key="sectorperiod", 
+                            on_change=cb_sector_period )
+
+    if st.button( 'Refresh' ):
+        st.experimental_singleton.clear()
+
+    # load historical data
+    sector_list = fetch_tickers( sector_tickers )
+    sector_info = fetch_info   ( sector_list, cache_key='sector' )
+    sector_hist = fetch_history( sector_list, period='1y', interval='1d', cache_key='sector' )
+
+    # compute duration
+    num_points  = get_num_points( sector_hist['close'][list(sector_tickers)[0]].index, period_delta[period] )
+    
+    # get source
+    se_chart = fc.get_sector_chart( sector_info, sector_hist, num_points )
+
+    # draw
+    st.altair_chart( se_chart, use_container_width=True )
+
+    # stock selector
+    r_sector_tickers = { v:k for k, v in sector_tickers.items() }
+    option = st.selectbox( 'Sector', r_sector_tickers, key='stockticker' )
+    st.write('')
+
+    # sector chart
+    se_chart = fc.get_candle_chart( sector_info, sector_hist, r_sector_tickers[option], num_points )
+
+    # draw
+    st.altair_chart( se_chart, use_container_width=True )
 
 # -------------------------------------------------------------------------------------------------
 # Pattern

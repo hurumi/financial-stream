@@ -28,6 +28,17 @@ abbr_list = {
     'NQ=F':'NASDAQ Futures',
     'ES=F':'S&P 500 Futures',
     'YM=F':'DOW Jones Futures',
+    'XLE': 'Energy', 
+    'XLU': 'Utilities', 
+    'XLB': 'Materials', 
+    'XLRE':'Real Estate',
+    'XLV': 'Healthcare',
+    'XLP': 'Consumer Defensive',
+    'XLI': 'Industrials',
+    'XLC': 'Communication Services',
+    'XLF': 'Financial',
+    'XLK': 'Technology',
+    'XLY': 'Consumer Cyclical',
 }
 
 # -------------------------------------------------------------------------------------------------
@@ -67,19 +78,21 @@ def get_price_chart( st_info, st_hist, ticker, num_points ):
 
         prev_close = st_info['price'][ ticker ][ 'regularMarketPreviousClose' ]
         cur_price  = st_info['price'][ ticker ][ 'regularMarketPrice'         ]
+        perd_close = st_hist['close'][ ticker ][ -num_points ]
 
         source2 = pd.DataFrame( {
             'Date': hist.index[-num_points:],
             'Price': prev_close
         } )
 
-        delta = ( cur_price - prev_close ) / prev_close * 100.
-        title = get_display_name( ticker, st_info )
+        delta1 = ( cur_price - prev_close ) / prev_close * 100.
+        delta2 = ( cur_price - perd_close ) / perd_close * 100.
+        title = get_display_name( ticker, st_info ) + f' ({ticker})'
         prev = alt.Chart( source2 ).mark_line().encode(
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q' ),
             color=alt.value("#FFAA00"),
-        ).properties( title = f'{title}: {cur_price:.2f} ({delta:.2f}%)' )
+        ).properties( title = f'{title}: {cur_price:.2f} (D {delta1:.2f}% / P {delta2:.2f}%)' )
 
         return ch+prev
 
@@ -130,19 +143,21 @@ def get_candle_chart( st_info, st_hist, ticker, num_points ):
         # draw previous close line
         prev_close = st_info['price'][ ticker ][ 'regularMarketPreviousClose' ]
         cur_price  = st_info['price'][ ticker ][ 'regularMarketPrice'         ]
+        perd_close = st_hist['close'][ ticker ][ -num_points ]
 
         source2 = pd.DataFrame( {
             'Date': hist.index[-num_points:],
             'Price': prev_close
         } )
 
-        delta = ( cur_price - prev_close ) / prev_close * 100.
-        title = get_display_name( ticker, st_info )
+        delta1 = ( cur_price - prev_close ) / prev_close * 100.
+        delta2 = ( cur_price - perd_close ) / perd_close * 100.
+        title = get_display_name( ticker, st_info ) + f' ({ticker})'
         prev = alt.Chart( source2 ).mark_line().encode(
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q' ),
             color=alt.value("#FFAA00"),
-        ).properties( title = f'{title}: {cur_price:.2f} ({delta:.2f}%)' )
+        ).properties( title = f'{title}: {cur_price:.2f} (D {delta1:.2f}% / P {delta2:.2f}%)' )
 
         return ch+prev        
 
@@ -400,7 +415,7 @@ def get_pattern_chart( bullish_histo, bearish_histo ):
 
     return ch
 
-def get_fear_grid_source():
+def get_fear_grid_info():
 
     # local functions
     def clean_image_url( _url ):
@@ -492,7 +507,7 @@ def get_fear_grid_analysis( fear_list, overtime_url ):
 def get_fear_grid_trend_source():
 
     # get basic information
-    needle_url, fear_list, overtime_url = get_fear_grid_source()
+    needle_url, fear_list, overtime_url = get_fear_grid_info()
 
     # detect history
     fg_hist = get_fear_grid_analysis( fear_list, overtime_url )
@@ -552,3 +567,63 @@ def get_fear_grid_trend_chart( fear_list, fg_hist, num_points ):
     )
 
     return rect + line
+
+def get_sector_chart( _se_info, _se_hist, num_points ):
+
+    # prepare data
+    se_tickers = list( _se_info[ 'price' ] )
+
+    # check validity
+    va_tickers = []
+    for option in se_tickers:
+        if len( _se_hist['close'][option] ) < num_points: continue
+        va_tickers.append( option )
+
+    last_price = [ _se_hist['close'][option][-1]          for option in va_tickers ]
+    ref_price  = [ _se_hist['close'][option][-num_points] for option in va_tickers ]
+    data_list  = [ round( (last_price[i]-ref_price[i])/ref_price[i]*100, 2 ) for i in range( len( va_tickers ) ) ]
+
+    # sort by change
+    comb_list = list( zip( data_list, va_tickers ) )
+    comb_list.sort( reverse=True )
+    sort_tick = [ b for (a,b) in comb_list ]
+    sort_data = [ a for (a,b) in comb_list ]
+
+    print( sort_tick )
+
+    # prepare source
+    source = pd.DataFrame( {
+        'Name': [ get_display_name( key, _se_info ) for key in sort_tick ],
+        'Ticker': sort_tick,
+        'Change(%)': sort_data,
+        'LabelX': [ elem/2 for elem in sort_data ],
+    } )
+
+    # prepare bar chart
+    ch = alt.Chart( source ).mark_bar().encode(
+        x=alt.X( 'Change(%)' ),
+        y=alt.Y( 'Name', sort=sort_tick, title='' ),
+        color=alt.condition(
+            alt.datum['Change(%)'] > 0,
+            alt.value("green"),  # The positive color
+            alt.value("red")  # The negative color
+        ),
+        tooltip = [ 'Name', 'Change(%)' ]
+    )
+
+    # prepare label
+    label = ch.mark_text(
+        align='center',
+        baseline='middle',
+        dx=0  # Nudges text to right so it doesn't appear on top of the bar
+    ).encode(
+        x=alt.X( 'LabelX', title='Change(%)' ),    
+        text='Change(%)',
+        color=alt.condition(
+            abs( alt.datum['Change(%)'] ) > 0.3,
+            alt.value("white"), 
+            alt.value("black")  
+        ),
+    )
+
+    return ch+label
