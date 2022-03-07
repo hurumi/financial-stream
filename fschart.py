@@ -6,11 +6,12 @@
 # Imports
 # -------------------------------------------------------------------------------------------------
 
-import pandas   as pd
-import altair   as alt
-import talib    as ta
-import datetime as dt
-import numpy    as np
+import streamlit as st
+import pandas    as pd
+import altair    as alt
+import talib     as ta
+import datetime  as dt
+import numpy     as np
 import requests
 
 from bs4 import BeautifulSoup
@@ -489,6 +490,7 @@ def get_fear_grid_chart( fear_list ):
 
     return rect + line
 
+@st.experimental_singleton
 def get_fear_grid_trend_source():
 
     needle_url, fear_list, overtime_url = get_fear_grid_source()
