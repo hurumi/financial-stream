@@ -51,6 +51,10 @@ sector_tickers = {
     'XLU': 'Utilities', 
     'XLB': 'Materials', 
 }
+fix_ticker_list = {
+    'BRK.B': 'BRK-B',
+    'LIN.L': 'LIN',
+}
 attr_list = { 
     'regularMarketChangePercent':'Change(%)', 
     'regularMarketPrice':'Price',
@@ -269,7 +273,8 @@ def get_num_points( index, delta ):
     h    = dt.timedelta( hours = delta[1] )
     num_points = len( index [ index >= ( last - d - h ) ] )
 
-    return num_points
+    # at least 2
+    return max( 2, num_points )
 
 def get_shortcut( port_dic ):
 
@@ -320,6 +325,11 @@ def get_gain_str( name, value ):
 
     temp_str += '&nbsp;'*5
     return temp_str
+
+def fix_ticker( ticker ):
+
+    if ticker in fix_ticker_list: return fix_ticker_list[ ticker ]
+    return ticker
 
 # -------------------------------------------------------------------------------------------------
 # Functions (Callbacks)
@@ -566,7 +576,7 @@ if menu == 'Stock':
     with st.expander( "Detailed information" ):
         
         st.text( 'Summary detail' )
-        st.json( stock_list.summary_detail[ option ] )
+        st.json( stock_info[ 'summary' ][ option ] )
 
         st.text( 'Financial data' )
         if stock_info['price'][ option ][ 'quoteType' ] == 'EQUITY':
@@ -674,7 +684,7 @@ if menu == 'Market':
     # draw
     for option in ticker_list:
         num_points = get_num_points( market_hist['close'][option].index, period_delta[period] )
-        market_chart = fc.get_price_chart( market_info, market_hist, option, num_points )
+        market_chart = fc.get_price_chart( market_info, market_hist, option, num_points, True )
         st.altair_chart( market_chart, use_container_width=True )
 
 # -------------------------------------------------------------------------------------------------
@@ -713,10 +723,25 @@ if menu == 'Sector':
     # stock selector
     r_sector_tickers = { v:k for k, v in sector_tickers.items() }
     option = st.selectbox( 'Sector', r_sector_tickers, key='stockticker' )
-    st.write('')
+
+    # top holdings performance
+    with st.expander( 'Top holdings performance' ):
+        r_option = r_sector_tickers[option]
+
+        # fix_ticker fixes ticker name error in yahoo finance (temporary solution)
+        top_tickers = [ fix_ticker( elem['symbol'] ) for elem in sector_info['fund'][r_option]['holdings'] ]
+        top_list = fetch_tickers( top_tickers ) 
+        top_info = fetch_info   ( top_list, cache_key=r_option )
+        top_hist = fetch_history( top_list, period='1y', interval='1d', cache_key=r_option )
+
+        # get source
+        to_chart = fc.get_sector_chart( top_info, top_hist, num_points )
+
+        # draw
+        st.altair_chart( to_chart, use_container_width=True )
 
     # sector chart
-    se_chart = fc.get_candle_chart( sector_info, sector_hist, r_sector_tickers[option], num_points )
+    se_chart = fc.get_price_chart( sector_info, sector_hist, r_sector_tickers[option], num_points )
 
     # draw
     st.altair_chart( se_chart, use_container_width=True )

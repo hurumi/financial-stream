@@ -23,7 +23,7 @@ from PIL import Image
 # Globals
 # -------------------------------------------------------------------------------------------------
 
-# Priority: (1) abbr_list (2) longName field (3) shortName field
+# Priority: (1) abbr_list (2) shortName field (3) longName field
 abbr_list = { 
     'NQ=F':'NASDAQ Futures',
     'ES=F':'S&P 500 Futures',
@@ -53,17 +53,25 @@ def compute_mdd( data ):
 def get_display_name( _ticker, _st_info ):
 
     if _ticker in abbr_list: return abbr_list[ _ticker ]
-    if _st_info['price'][_ticker]['longName' ] != None: return _st_info['price'][_ticker]['longName' ]
     if _st_info['price'][_ticker]['shortName'] != None: return _st_info['price'][_ticker]['shortName']
+    if _st_info['price'][_ticker]['longName' ] != None: return _st_info['price'][_ticker]['longName' ]
     return _ticker
 
 # -------------------------------------------------------------------------------------------------
 # Chart Functions
 # -------------------------------------------------------------------------------------------------
 
-def get_price_chart( st_info, st_hist, ticker, num_points ):
+def get_price_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
 
         hist = st_hist[ 'close' ][ ticker ]
+
+        prev_close = st_info['price'][ ticker ][ 'regularMarketPreviousClose' ]
+        cur_price  = st_info['price'][ ticker ][ 'regularMarketPrice'         ]
+        perd_close = st_hist['close'][ ticker ][ -num_points ]
+
+        delta1 = ( cur_price - prev_close ) / prev_close * 100.
+        delta2 = ( cur_price - perd_close ) / perd_close * 100.
+        title = get_display_name( ticker, st_info ) + f' ({ticker})'
 
         source1 = pd.DataFrame( {
             'Date': hist.index[-num_points:],
@@ -74,31 +82,33 @@ def get_price_chart( st_info, st_hist, ticker, num_points ):
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q', scale=alt.Scale( zero=False )  ),
             tooltip = [ 'Date', alt.Tooltip( 'Price', format='.2f' ) ]
-        )
+        ).properties( title = f'{title}: {cur_price:.2f} (D {delta1:.2f}% / P {delta2:.2f}%)' )
+
+        if prev_line:
+            source2 = pd.DataFrame( {
+                'Date': hist.index[-num_points:],
+                'Price': prev_close
+            } )
+
+            ch = ch + alt.Chart( source2 ).mark_line().encode(
+                x=alt.X( 'Date:T' ),
+                y=alt.Y( 'Price:Q' ),
+                color=alt.value("#FFAA00"),
+            )
+
+        return ch
+
+def get_candle_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
+
+        hist = st_hist[ 'close' ][ ticker ]
 
         prev_close = st_info['price'][ ticker ][ 'regularMarketPreviousClose' ]
         cur_price  = st_info['price'][ ticker ][ 'regularMarketPrice'         ]
         perd_close = st_hist['close'][ ticker ][ -num_points ]
 
-        source2 = pd.DataFrame( {
-            'Date': hist.index[-num_points:],
-            'Price': prev_close
-        } )
-
         delta1 = ( cur_price - prev_close ) / prev_close * 100.
         delta2 = ( cur_price - perd_close ) / perd_close * 100.
         title = get_display_name( ticker, st_info ) + f' ({ticker})'
-        prev = alt.Chart( source2 ).mark_line().encode(
-            x=alt.X( 'Date:T' ),
-            y=alt.Y( 'Price:Q' ),
-            color=alt.value("#FFAA00"),
-        ).properties( title = f'{title}: {cur_price:.2f} (D {delta1:.2f}% / P {delta2:.2f}%)' )
-
-        return ch+prev
-
-def get_candle_chart( st_info, st_hist, ticker, num_points ):
-
-        hist = st_hist[ 'close' ][ ticker ]
 
         # make source
         source1 = pd.DataFrame( {
@@ -119,7 +129,7 @@ def get_candle_chart( st_info, st_hist, ticker, num_points ):
             x = alt.X( 'Date:T' ),
             color=open_close_color,
             tooltip = [ 'Date', alt.Tooltip( 'Close', format='.2f' ) ]
-        )
+        ).properties( title = f'{title}: {cur_price:.2f} (D {delta1:.2f}% / P {delta2:.2f}%)' )
 
         # rule
         rule = base.mark_rule().encode(
@@ -140,26 +150,20 @@ def get_candle_chart( st_info, st_hist, ticker, num_points ):
         # final candlestick
         ch = rule + bar
 
+        if prev_line:
         # draw previous close line
-        prev_close = st_info['price'][ ticker ][ 'regularMarketPreviousClose' ]
-        cur_price  = st_info['price'][ ticker ][ 'regularMarketPrice'         ]
-        perd_close = st_hist['close'][ ticker ][ -num_points ]
+            source2 = pd.DataFrame( {
+                'Date': hist.index[-num_points:],
+                'Price': prev_close
+            } )
 
-        source2 = pd.DataFrame( {
-            'Date': hist.index[-num_points:],
-            'Price': prev_close
-        } )
+            ch = ch + alt.Chart( source2 ).mark_line().encode(
+                x=alt.X( 'Date:T' ),
+                y=alt.Y( 'Price:Q' ),
+                color=alt.value("#FFAA00"),
+            )
 
-        delta1 = ( cur_price - prev_close ) / prev_close * 100.
-        delta2 = ( cur_price - perd_close ) / perd_close * 100.
-        title = get_display_name( ticker, st_info ) + f' ({ticker})'
-        prev = alt.Chart( source2 ).mark_line().encode(
-            x=alt.X( 'Date:T' ),
-            y=alt.Y( 'Price:Q' ),
-            color=alt.value("#FFAA00"),
-        ).properties( title = f'{title}: {cur_price:.2f} (D {delta1:.2f}% / P {delta2:.2f}%)' )
-
-        return ch+prev        
+        return ch      
 
 def get_bband_chart( st_hist, ticker, num_points ):
 
@@ -591,7 +595,7 @@ def get_sector_chart( _se_info, _se_hist, num_points ):
 
     # prepare source
     source = pd.DataFrame( {
-        'Name': [ get_display_name( key, _se_info ) for key in sort_tick ],
+        'Name': [ get_display_name( key, _se_info )+f' ({key})' for key in sort_tick ],
         'Ticker': sort_tick,
         'Change(%)': sort_data,
         'LabelX': [ elem/2 for elem in sort_data ],

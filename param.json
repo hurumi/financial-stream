@@ -29,6 +29,6 @@
     "market_period": "12H",
     "sector_period": "1W",
     "gain_period": "3M",
-    "stock_period": "1M",
+    "stock_period": "3M",
     "pattern_period": "3M"
 }
