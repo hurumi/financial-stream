@@ -30,5 +30,6 @@
     "sector_period": "1W",
     "gain_period": "3M",
     "stock_period": "3M",
-    "pattern_period": "3M"
+    "pattern_period": "3M",
+    "fear_period": "3M"
 }

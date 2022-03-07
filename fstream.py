@@ -49,7 +49,8 @@ sector_tickers = {
     'XLRE':'Real Estate',
     'XLE': 'Energy', 
     'XLU': 'Utilities', 
-    'XLB': 'Materials', 
+    'XLB': 'Materials',
+    'SPY': 'S&P 500',
 }
 fix_ticker_list = {
     'BRK.B': 'BRK-B',
@@ -112,7 +113,8 @@ params = {
     'sector_period' : '1W',
     'gain_period'   : '3M',
     'stock_period'  : '3M',
-    'pattern_period': '3M'
+    'pattern_period': '3M',
+    'fear_period'   : '3M',
 }
 
 # -------------------------------------------------------------------------------------------------
@@ -401,6 +403,10 @@ def cb_sector_period():
 
 def cb_pattern_period():
     params[ 'pattern_period' ] = st.session_state.patternperiod
+    save_params( params )
+
+def cb_fear_period():
+    params[ 'fear_period' ] = st.session_state.fearperiod
     save_params( params )
 
 # -------------------------------------------------------------------------------------------------
@@ -879,7 +885,10 @@ if menu == 'Fear & Greed':
 
     # points selector
     values = [ '1M', '3M', '6M', '1Y' ]
-    period = st.selectbox( 'Period', values )
+    period = st.selectbox( 'Period', values,
+                            index=values.index( params['fear_period'] ),
+                            key="fearperiod",
+                            on_change=cb_fear_period )
 
     num_points = get_num_points( fg_hist.index, period_delta[period] )
     fear_chart = fc.get_fear_grid_trend_chart( fear_list, fg_hist, num_points )
