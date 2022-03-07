@@ -589,8 +589,6 @@ def get_sector_chart( _se_info, _se_hist, num_points ):
     sort_tick = [ b for (a,b) in comb_list ]
     sort_data = [ a for (a,b) in comb_list ]
 
-    print( sort_tick )
-
     # prepare source
     source = pd.DataFrame( {
         'Name': [ get_display_name( key, _se_info ) for key in sort_tick ],
