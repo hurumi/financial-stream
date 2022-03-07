@@ -45,7 +45,7 @@ def compute_mdd( data ):
 # Chart Functions
 # -------------------------------------------------------------------------------------------------
 
-def get_price_chart( st_list, st_hist, ticker, num_points ):
+def get_price_chart( st_info, st_hist, ticker, num_points ):
 
         hist = st_hist[ 'close' ][ ticker ]
 
@@ -60,8 +60,8 @@ def get_price_chart( st_list, st_hist, ticker, num_points ):
             tooltip = [ 'Date', alt.Tooltip( 'Price', format='.2f' ) ]
         )
 
-        prev_close = st_list.price[ ticker ][ 'regularMarketPreviousClose' ]
-        cur_price  = st_list.price[ ticker ][ 'regularMarketPrice'         ]
+        prev_close = st_info['price'][ ticker ][ 'regularMarketPreviousClose' ]
+        cur_price  = st_info['price'][ ticker ][ 'regularMarketPrice'         ]
 
         source2 = pd.DataFrame( {
             'Date': hist.index[-num_points:],
@@ -78,7 +78,7 @@ def get_price_chart( st_list, st_hist, ticker, num_points ):
 
         return ch+prev
 
-def get_candle_chart( st_list, st_hist, ticker, num_points ):
+def get_candle_chart( st_info, st_hist, ticker, num_points ):
 
         hist = st_hist[ 'close' ][ ticker ]
 
@@ -123,8 +123,8 @@ def get_candle_chart( st_list, st_hist, ticker, num_points ):
         ch = rule + bar
 
         # draw previous close line
-        prev_close = st_list.price[ ticker ][ 'regularMarketPreviousClose' ]
-        cur_price  = st_list.price[ ticker ][ 'regularMarketPrice'         ]
+        prev_close = st_info['price'][ ticker ][ 'regularMarketPreviousClose' ]
+        cur_price  = st_info['price'][ ticker ][ 'regularMarketPrice'         ]
 
         source2 = pd.DataFrame( {
             'Date': hist.index[-num_points:],

@@ -1,9 +1,9 @@
 {
     "port": {
         "MSFT": 15,
+        "QQQ": 15,
         "AAPL": 15,
         "SPLG": 15,
-        "QQQ": 15,
         "JEPI": 15,
         "TSLA": 4
     },

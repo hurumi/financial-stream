@@ -108,21 +108,32 @@ def fetch_tickers( tickers ):
     return _list
 
 @st.experimental_singleton
+def fetch_info( _tickers_list, cache_key ):
+    
+    info = {}
+    info[ 'price'     ] = _tickers_list.price
+    info[ 'summary'   ] = _tickers_list.summary_detail
+    info[ 'financial' ] = _tickers_list.financial_data
+    info[ 'fund'      ] = _tickers_list.fund_holding_info
+
+    return info
+
+@st.experimental_singleton
 def fetch_history( _ticker_list, period, interval, cache_key ):
 
     _hist = _ticker_list.history( period, interval, adj_timezone=False )
     return _hist
 
 @st.experimental_singleton
-def fill_table( _st_list, _st_hist, cache_key ):
+def fill_table( _st_info, _st_hist, cache_key ):
 
     # from Ticker.price
-    df1 = pd.DataFrame( _st_list.price )
+    df1 = pd.DataFrame( _st_info['price'] )
     rm_index = [ x for x in df1.index if x not in attr_list ]
     df1.drop( rm_index, inplace=True )
 
     # from Ticker.summary_detail
-    df2 = pd.DataFrame( _st_list.summary_detail )
+    df2 = pd.DataFrame( _st_info['summary'] )
     rm_index = [ x for x in df2.index if x not in attr_list ]
     df2.drop( rm_index, inplace=True )
 
@@ -169,11 +180,10 @@ def fill_table( _st_list, _st_hist, cache_key ):
         if '(%)' in key: df.loc[ key ] *= 100
 
     # replace ETF P/E
-    fund_info = _st_list.fund_equity_holdings
     for key in df.columns:
-        if _st_list.price[ key ][ 'quoteType' ] != 'ETF': continue
+        if _st_info[ 'price' ][ key ][ 'quoteType' ] != 'ETF': continue
         try:
-            df.loc[ 'P/E' ][ key ] = fund_info[ key ][ 'priceToEarnings' ]
+            df.loc[ 'P/E' ][ key ] = _st_info[ 'fund' ][ key ][ 'priceToEarnings' ]
         except:
             df.loc[ 'P/E' ][ key ] = NaN
 
@@ -190,8 +200,9 @@ def fill_table( _st_list, _st_hist, cache_key ):
     return df.transpose()
 
 def is_market_open():
-    _temp = Ticker( 'aapl', verify=False )
-    if _temp.price['aapl']['marketState'] == 'REGULAR': return True
+    
+    t=Ticker( params['market'][0], verify=False )
+    if t.price[ params['market'][0] ]['marketState'] == 'REGULAR': return True
     return False
 
 def highlight_color( s ):
@@ -304,7 +315,7 @@ def cb_ticker_list():
     _temp_list = st.session_state.tickerlist.split( ' ' )
     
     # validate tickers
-    _verified_list = {}
+    _ticker_list = {}
     for elem in _temp_list:
 
         # split ticker and allocation
@@ -313,10 +324,17 @@ def cb_ticker_list():
         if len( elem_sub ) > 1: _alloc = int( elem_sub[1] )
         else: _alloc = 1
 
-        # validate
-        t = Ticker( _ticker, verify=False, validate=True )
-        if t.price != {}:
-            _verified_list[ _ticker ] = _alloc
+        # store
+        _ticker_list[ _ticker ] = _alloc
+
+    # validate
+    _verified_list = {}
+    p = Ticker( list( _ticker_list ), verify=False, validate=True ).price
+    for k in _ticker_list:
+        try:
+            if p[ k ]: _verified_list[ k ] = _ticker_list[ k ]
+        except:
+            pass
 
     # if nothing, use default port
     if _verified_list == {}: _verified_list = _DEFAULT_PORT
@@ -387,14 +405,8 @@ else: save_params( params )
 port_k, port_str = get_shortcut( params['port'] )
 
 # portfolio and benchmark
-stock_list   = fetch_tickers    ( port_k           )
-bench_list   = fetch_tickers    ( params['bench' ] )
-
-# according to market open
-if is_market_open():
-    market_list = fetch_tickers( params['market'] )
-else:
-    market_list = fetch_tickers( params['future'] )
+stock_list = fetch_tickers( port_k )
+bench_list = fetch_tickers( params['bench'] )
 
 # -------------------------------------------------------------------------------------------------
 # Portfolio
@@ -417,10 +429,11 @@ if menu == 'Portfolio':
     # ---------------------------------------------------------------------------------------------
 
     # historical prices
-    stock_hist = fetch_history( stock_list,  period='1y', interval='1d', cache_key='stock' )
+    stock_info = fetch_info   ( stock_list, cache_key='stock' )
+    stock_hist = fetch_history( stock_list, period='1y', interval='1d', cache_key='stock' )
 
     # fill data from stock list
-    df  = fill_table( stock_list, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
+    df  = fill_table( stock_info, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
     dfs = df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
     st.write( dfs )
 
@@ -527,7 +540,8 @@ if menu == 'Stock':
                             on_change=cb_stock_period )
 
     # historical prices
-    stock_hist = fetch_history( stock_list,  period='1y', interval='1d', cache_key='stock' )
+    stock_info = fetch_info    ( stock_list, cache_key='stock' )
+    stock_hist = fetch_history ( stock_list, period='1y', interval='1d', cache_key='stock' )
     num_points = get_num_points( stock_hist['close'][option].index, period_delta[period] )
 
     # detailed information (JSON format)
@@ -537,10 +551,10 @@ if menu == 'Stock':
         st.json( stock_list.summary_detail[ option ] )
 
         st.text( 'Financial data' )
-        if stock_list.price[ option ][ 'quoteType' ] == 'EQUITY':
-            st.json( stock_list.financial_data[ option ] )
+        if stock_info['price'][ option ][ 'quoteType' ] == 'EQUITY':
+            st.json( stock_info[ 'financial' ][ option ] )
         else:
-            st.json( stock_list.fund_holding_info[ option ] )
+            st.json( stock_info[ 'fund' ][ option ] )
 
     # ---------------------------------------------------------------------------------------------
     # price history chart
@@ -557,7 +571,7 @@ if menu == 'Stock':
         ma120_flag  = st.checkbox( 'MA120 (BLUE)' )
 
     # price chart
-    price_chart = fc.get_candle_chart( stock_list, stock_hist, option, num_points )
+    price_chart = fc.get_candle_chart( stock_info, stock_hist, option, num_points )
 
     # bollinger band chart
     if bband_flag:
@@ -635,12 +649,14 @@ if menu == 'Market':
         ticker_list = params[ 'future' ]
 
     # load historical data
+    market_list = fetch_tickers( ticker_list )
+    market_info = fetch_info   ( market_list, cache_key='market' )
     market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market' )
 
     # draw
     for option in ticker_list:
         num_points = get_num_points( market_hist['close'][option].index, period_delta[period] )
-        market_chart = fc.get_price_chart( market_list, market_hist, option, num_points )
+        market_chart = fc.get_price_chart( market_info, market_hist, option, num_points )
         st.altair_chart( market_chart, use_container_width=True )
 
 # -------------------------------------------------------------------------------------------------
@@ -650,7 +666,8 @@ if menu == 'Market':
 if menu == 'Pattern':
 
     # historical prices
-    stock_hist = fetch_history( stock_list,  period='1y', interval='1d', cache_key='stock' )
+    stock_info = fetch_info    ( stock_list, cache_key='stock' )
+    stock_hist = fetch_history ( stock_list, period='1y', interval='1d', cache_key='stock' )
     num_points = get_num_points( stock_hist['close'][port_k[0]].index, period_delta['1M'] )
 
     # ---------------------------------------------------------------------------------------------
@@ -736,7 +753,7 @@ if menu == 'Pattern':
     bearish_histo = _bearish_histo[ _bearish_histo > 0 ]
 
     # price chart
-    price_chart = fc.get_candle_chart( stock_list, stock_hist, option, num_points )
+    price_chart = fc.get_candle_chart( stock_info, stock_hist, option, num_points )
 
     # bullish chart
     price_chart += fc.get_pattern_chart( bullish_histo, bearish_histo )
