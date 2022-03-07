@@ -182,7 +182,7 @@ def fill_table( _st_info, _st_hist, cache_key ):
     for key in df.columns:
         if _st_info[ 'price' ][ key ][ 'quoteType' ] != 'ETF': continue
         try:
-            df.loc[ 'P/E' ][ key ] = _st_info[ 'fund' ][ key ][ 'priceToEarnings' ]
+            df.loc[ 'P/E' ][ key ] = _st_info[ 'fund' ][ key ][ 'equityHoldings' ][ 'priceToEarnings' ]
         except:
             df.loc[ 'P/E' ][ key ] = NaN
 
