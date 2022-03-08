@@ -84,6 +84,7 @@ def get_price_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
             tooltip = [ 'Date', alt.Tooltip( 'Price', format='.2f' ) ]
         ).properties( title = f'{title}: {cur_price:.2f} (D {delta1:.2f}% / P {delta2:.2f}%)' )
 
+        # draw previous close line
         if prev_line:
             source2 = pd.DataFrame( {
                 'Date': hist.index[-num_points:],
@@ -150,8 +151,8 @@ def get_candle_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
         # final candlestick
         ch = rule + bar
 
-        if prev_line:
         # draw previous close line
+        if prev_line:
             source2 = pd.DataFrame( {
                 'Date': hist.index[-num_points:],
                 'Price': prev_close

@@ -443,6 +443,14 @@ stock_list = fetch_tickers( port_k )
 bench_list = fetch_tickers( params['bench'] )
 
 # -------------------------------------------------------------------------------------------------
+# Clear cache counter if necessary
+# -------------------------------------------------------------------------------------------------
+
+if 'stcnt' not in st.session_state: st.session_state.stcnt = 0
+if 'mkcnt' not in st.session_state: st.session_state.mkcnt = 0
+if 'secnt' not in st.session_state: st.session_state.secnt = 0
+
+# -------------------------------------------------------------------------------------------------
 # Portfolio
 # -------------------------------------------------------------------------------------------------
 
@@ -456,15 +464,15 @@ if menu == 'Portfolio':
                                 on_change=cb_ticker_list )
 
     if st.button( 'Refresh' ):
-        st.experimental_singleton.clear()
+        st.session_state.stcnt += 1
 
     # ---------------------------------------------------------------------------------------------
     # Summary
     # ---------------------------------------------------------------------------------------------
 
     # historical prices
-    stock_info = fetch_info   ( stock_list, cache_key='stock' )
-    stock_hist = fetch_history( stock_list, period='1y', interval='1d', cache_key='stock' )
+    stock_info = fetch_info   ( stock_list, cache_key='stock'+str(st.session_state.stcnt) )
+    stock_hist = fetch_history( stock_list, period='1y', interval='1d', cache_key='stock'+str(st.session_state.stcnt) )
 
     # fill data from stock list
     df  = fill_table( stock_info, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
@@ -574,8 +582,8 @@ if menu == 'Stock':
                             on_change=cb_stock_period )
 
     # historical prices
-    stock_info = fetch_info    ( stock_list, cache_key='stock' )
-    stock_hist = fetch_history ( stock_list, period='1y', interval='1d', cache_key='stock' )
+    stock_info = fetch_info    ( stock_list, cache_key='stock'+str(st.session_state.stcnt) )
+    stock_hist = fetch_history ( stock_list, period='1y', interval='1d', cache_key='stock'+str(st.session_state.stcnt) )
     num_points = get_num_points( stock_hist['close'][option].index, period_delta[period] )
 
     # detailed information (JSON format)
@@ -674,7 +682,7 @@ if menu == 'Market':
                             on_change=cb_market_period )
 
     if st.button( 'Refresh' ):
-        st.experimental_singleton.clear()
+        st.session_state.mkcnt += 1
 
     # check market open
     if is_market_open():
@@ -684,8 +692,8 @@ if menu == 'Market':
 
     # load historical data
     market_list = fetch_tickers( ticker_list )
-    market_info = fetch_info   ( market_list, cache_key='market' )
-    market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market' )
+    market_info = fetch_info   ( market_list, cache_key='market'+str(st.session_state.mkcnt) )
+    market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market'+str(st.session_state.mkcnt) )
 
     # draw
     for option in ticker_list:
@@ -710,12 +718,12 @@ if menu == 'Sector':
                             on_change=cb_sector_period )
 
     if st.button( 'Refresh' ):
-        st.experimental_singleton.clear()
+        st.session_state.secnt += 1
 
     # load historical data
     sector_list = fetch_tickers( sector_tickers )
-    sector_info = fetch_info   ( sector_list, cache_key='sector' )
-    sector_hist = fetch_history( sector_list, period='1y', interval='1d', cache_key='sector' )
+    sector_info = fetch_info   ( sector_list, cache_key='sector'+str(st.session_state.secnt) )
+    sector_hist = fetch_history( sector_list, period='1y', interval='1d', cache_key='sector'+str(st.session_state.secnt) )
 
     # compute duration
     num_points  = get_num_points( sector_hist['close'][list(sector_tickers)[0]].index, period_delta[period] )
@@ -737,8 +745,8 @@ if menu == 'Sector':
         # fix_ticker fixes ticker name error in yahoo finance (temporary solution)
         top_tickers = [ fix_ticker( elem['symbol'] ) for elem in sector_info['fund'][r_option]['holdings'] ]
         top_list = fetch_tickers( top_tickers ) 
-        top_info = fetch_info   ( top_list, cache_key=r_option )
-        top_hist = fetch_history( top_list, period='1y', interval='1d', cache_key=r_option )
+        top_info = fetch_info   ( top_list, cache_key=r_option+str(st.session_state.secnt) )
+        top_hist = fetch_history( top_list, period='1y', interval='1d', cache_key=r_option+str(st.session_state.secnt) )
 
         # get source
         to_chart = fc.get_sector_chart( top_info, top_hist, num_points )
@@ -759,8 +767,8 @@ if menu == 'Sector':
 if menu == 'Pattern':
 
     # historical prices
-    stock_info = fetch_info    ( stock_list, cache_key='stock' )
-    stock_hist = fetch_history ( stock_list, period='1y', interval='1d', cache_key='stock' )
+    stock_info = fetch_info    ( stock_list, cache_key='stock'+str(st.session_state.stcnt) )
+    stock_hist = fetch_history ( stock_list, period='1y', interval='1d', cache_key='stock'+str(st.session_state.stcnt) )
     num_points = get_num_points( stock_hist['close'][port_k[0]].index, period_delta['1M'] )
 
     # ---------------------------------------------------------------------------------------------
