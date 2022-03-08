@@ -372,11 +372,12 @@ def cb_ticker_list():
     _temp_k, _temp_str = get_shortcut( _verified_list )
     st.session_state.tickerlist = _temp_str
 
-    # store to parameter and save, then clear cache
+    # store to parameter and save
     params[ 'port' ] = _verified_list
     save_params( params )
 
-    st.experimental_singleton.clear()   # clear cache
+    # clear portfolio cache
+    st.session_state.stcnt += 1
 
 def cb_gain_period():
     params[ 'gain_period' ] = st.session_state.gainperiod
