@@ -289,7 +289,7 @@ def get_shortcut( port_dic ):
 def get_port_gains():
 
     # get latest value
-    last_price = [ stock_hist['close'][option][-1] for option in port_k ]
+    last_price = [ stock_info['price'][option]['regularMarketPrice'] for option in port_k ]
 
     # portfolio allocation
     port_alloc  = [ params['port'][option] for option in port_k ]
@@ -301,10 +301,13 @@ def get_port_gains():
     for delta in time_delta:
 
         # get historic price
-        prev_price = []
-        for option in port_k:
-            num_points = get_num_points( stock_hist['close'][option].index, [ delta, 0 ] )
-            prev_price.append( stock_hist['close'][option][-num_points] )
+        if delta != 1:
+            prev_price = []
+            for option in port_k:
+                num_points = get_num_points( stock_hist['close'][option].index, [ delta, 0 ] )
+                prev_price.append( stock_hist['close'][option][-num_points] )
+        else:
+            prev_price = [ stock_info['price'][option]['regularMarketPreviousClose'] for option in port_k ]
 
         # compute gains
         prev_gain = []
