@@ -133,7 +133,6 @@ def fetch_info( _tickers_list, cache_key ):
     info = {}
     info[ 'price'     ] = _tickers_list.price
     info[ 'summary'   ] = _tickers_list.summary_detail
-    info[ 'financial' ] = _tickers_list.financial_data
     info[ 'fund'      ] = _tickers_list.fund_holding_info
 
     return info
@@ -596,10 +595,8 @@ if menu == 'Stock':
         st.text( 'Summary detail' )
         st.json( stock_info[ 'summary' ][ option ] )
 
-        st.text( 'Financial data' )
-        if stock_info['price'][ option ][ 'quoteType' ] == 'EQUITY':
-            st.json( stock_info[ 'financial' ][ option ] )
-        else:
+        if stock_info['price'][ option ][ 'quoteType' ] == 'ETF':
+            st.text( 'ETF data' )
             st.json( stock_info[ 'fund' ][ option ] )
 
     # ---------------------------------------------------------------------------------------------
