@@ -478,7 +478,7 @@ if menu == 'Portfolio':
     stock_hist = fetch_history( stock_list, period='1y', interval='1d', cache_key='stock'+str(st.session_state.stcnt) )
 
     # fill data from stock list
-    df  = fill_table( stock_info, stock_hist, cache_key="stock" ).sort_values( by='RSI(14)' )
+    df  = fill_table( stock_info, stock_hist, cache_key="stock"+str(st.session_state.stcnt) ).sort_values( by='RSI(14)' )
     dfs = df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
     st.write( dfs )
 
@@ -505,7 +505,7 @@ if menu == 'Portfolio':
                                 on_change=cb_gain_period )
 
         # load data
-        bench_hist = fetch_history( bench_list,  period='1y', interval='1d', cache_key='bench' )
+        bench_hist = fetch_history( bench_list,  period='1y', interval='1d', cache_key='bench'+str(st.session_state.stcnt) )
         num_points = get_num_points( bench_hist['close'][ params['bench'][0] ].index, period_delta[period] )
 
         # draw chart
