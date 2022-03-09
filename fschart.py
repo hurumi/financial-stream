@@ -73,12 +73,12 @@ def get_price_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
         delta2 = ( cur_price - perd_close ) / perd_close * 100.
         title = get_display_name( ticker, st_info ) + f' ({ticker})'
 
-        source1 = pd.DataFrame( {
+        source = pd.DataFrame( {
             'Date': hist.index[-num_points:],
             'Price': hist[-num_points:].values
         } )
 
-        ch = alt.Chart( source1 ).mark_line().encode(
+        ch = alt.Chart( source ).mark_line().encode(
             x=alt.X( 'Date:T' ),
             y=alt.Y( 'Price:Q', scale=alt.Scale( zero=False )  ),
             tooltip = [ 'Date', alt.Tooltip( 'Price', format='.2f' ) ]
@@ -86,16 +86,8 @@ def get_price_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
 
         # draw previous close line
         if prev_line:
-            source2 = pd.DataFrame( {
-                'Date': hist.index[-num_points:],
-                'Price': prev_close
-            } )
-
-            ch = ch + alt.Chart( source2 ).mark_line().encode(
-                x=alt.X( 'Date:T' ),
-                y=alt.Y( 'Price:Q' ),
-                color=alt.value("#FFAA00"),
-            )
+            ln = alt.Chart( pd.DataFrame( {'Price': [prev_close]} ) )
+            ch = ch + ln.mark_rule( strokeWidth=2, color='#FFAA00').encode( y='Price' )
 
         return ch
 
@@ -112,7 +104,7 @@ def get_candle_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
         title = get_display_name( ticker, st_info ) + f' ({ticker})'
 
         # make source
-        source1 = pd.DataFrame( {
+        source = pd.DataFrame( {
             'Date':  hist.index[-num_points:],
             'High':  st_hist['high'][ticker][-num_points:].values,
             'Low':   st_hist['low'][ticker][-num_points:].values,
@@ -126,7 +118,7 @@ def get_candle_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
                                           alt.value( "#ae1325" ) )
 
         # base
-        base = alt.Chart( source1 ).encode(
+        base = alt.Chart( source ).encode(
             x = alt.X( 'Date:T' ),
             color=open_close_color,
             tooltip = [ 'Date', alt.Tooltip( 'Close', format='.2f' ) ]
@@ -153,16 +145,8 @@ def get_candle_chart( st_info, st_hist, ticker, num_points, prev_line=False ):
 
         # draw previous close line
         if prev_line:
-            source2 = pd.DataFrame( {
-                'Date': hist.index[-num_points:],
-                'Price': prev_close
-            } )
-
-            ch = ch + alt.Chart( source2 ).mark_line().encode(
-                x=alt.X( 'Date:T' ),
-                y=alt.Y( 'Price:Q' ),
-                color=alt.value("#FFAA00"),
-            )
+            ln = alt.Chart( pd.DataFrame( {'Price': [prev_close]} ) )
+            ch = ch + ln.mark_rule( strokeWidth=2, color='#FFAA00').encode( y='Price' )
 
         return ch      
 
@@ -219,24 +203,14 @@ def get_rsi_chart( st_hist, ticker, num_points, params ):
         y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
         tooltip = [ 'Date', alt.Tooltip( 'RSI', format='.2f' ) ]
     ).properties( title = f'RSI(14): {rsi_hist[-1]:.2f}' )
-    source_up = pd.DataFrame( {
-        'Date': rsi_hist.index[-num_points:],
-        'RSI': params['RSI_H']
-    } )
-    up = alt.Chart( source_up ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
-        color=alt.value("#FFAA00")
-    )
-    source_dn = pd.DataFrame( {
-        'Date': rsi_hist.index[-num_points:],
-        'RSI': params['RSI_L']
-    } )
-    dn = alt.Chart( source_dn ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'RSI', scale=alt.Scale( domain=[10,90] )  ),
-        color=alt.value("#FFAA00")
-    ) 
+
+    # draw guide lines
+    ln_up = alt.Chart( pd.DataFrame( {'RSI': [params['RSI_H']] } ) )
+    up = ln_up.mark_rule( strokeWidth=2, color='#FFAA00').encode( y='RSI' )
+
+    ln_dn = alt.Chart( pd.DataFrame( {'RSI': [params['RSI_L']] } ) )
+    dn = ln_dn.mark_rule( strokeWidth=2, color='#FFAA00').encode( y='RSI' )
+
     return ch+up+dn
 
 def get_cci_chart( st_hist, ticker, num_points, params ):
@@ -251,24 +225,14 @@ def get_cci_chart( st_hist, ticker, num_points, params ):
         y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
         tooltip = [ 'Date', alt.Tooltip( 'CCI', format='.2f' ) ]
     ).properties( title = f'CCI(14): {cci_hist[-1]:.2f}' )
-    source_up = pd.DataFrame( {
-        'Date': cci_hist.index[-num_points:],
-        'CCI': params['CCI_H']
-    } )
-    up = alt.Chart( source_up ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
-        color=alt.value("#FFAA00")
-    )
-    source_dn = pd.DataFrame( {
-        'Date': cci_hist.index[-num_points:],
-        'CCI': params['CCI_L']
-    } )
-    dn = alt.Chart( source_dn ).mark_line().encode(
-        x=alt.X( 'Date' ),
-        y=alt.Y( 'CCI', scale=alt.Scale( domain=[-200,200] )  ),
-        color=alt.value("#FFAA00")
-    ) 
+
+    # draw guide lines
+    ln_up = alt.Chart( pd.DataFrame( {'CCI': [params['CCI_H']] } ) )
+    up = ln_up.mark_rule( strokeWidth=2, color='#FFAA00').encode( y='CCI' )
+
+    ln_dn = alt.Chart( pd.DataFrame( {'CCI': [params['CCI_L']] } ) )
+    dn = ln_dn.mark_rule( strokeWidth=2, color='#FFAA00').encode( y='CCI' )
+
     return ch+up+dn    
 
 def get_macd_charts( st_hist, ticker, num_points ):
