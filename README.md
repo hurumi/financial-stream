@@ -7,7 +7,7 @@ streamlit run fstream.py
 ## Menu description
 
 #### Market menu
-* Show various market charts for relatively short term (max 5D)
+* Show various market charts for relatively short term (max 5 days)
 * "market" and "future" sections of param.json specify the tickers
 * When market is open, "market" section is used. Otherwise, "future" section is used
 
