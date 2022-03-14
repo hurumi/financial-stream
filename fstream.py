@@ -479,7 +479,7 @@ if menu == 'Portfolio':
 
     # fill data from stock list
     df  = fill_table( stock_info, stock_hist, cache_key="stock"+str(st.session_state.stcnt) ).sort_values( by='RSI(14)' )
-    dfs = df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
+    dfs = df.style.apply( highlight_color, axis=0 ).format( "{:.2f}", na_rep='-' )
     st.write( dfs )
 
     # get portfolio gains (1D, 1W, 1M, 3M, 6M, 1Y)
@@ -514,7 +514,7 @@ if menu == 'Portfolio':
         st.altair_chart( btest_chart, use_container_width=True )
 
         # write basic statistics
-        bt_inf_s = bt_inf.style.format( precision=2, na_rep='-' )
+        bt_inf_s = bt_inf.style.format( "{:.2f}", na_rep='-' )
         st.dataframe( bt_inf_s )
 
     # ---------------------------------------------------------------------------------------------
@@ -555,14 +555,14 @@ if menu == 'Portfolio':
     st.markdown( '##### Oversold' )
     st.text( f'RSI<{rsi_L} and CCI<{cci_L}' )
     if len( oversold_df.index ) > 0:
-        dfs = oversold_df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
+        dfs = oversold_df.style.apply( highlight_color, axis=0 ).format( "{:.2f}", na_rep='-' )
         st.write( dfs )
 
     # sub title
     st.markdown( '##### Overbought' )
     st.text( f'RSI>{rsi_H} and CCI>{cci_H}' )
     if len( overbought_df.index ) > 0:
-        dfs = overbought_df.style.apply( highlight_color, axis=0 ).format( precision=2, na_rep='-' )
+        dfs = overbought_df.style.apply( highlight_color, axis=0 ).format( "{:.2f}", na_rep='-' )
         st.write( dfs )
 
 # -------------------------------------------------------------------------------------------------
