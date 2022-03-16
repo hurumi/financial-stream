@@ -121,7 +121,6 @@ params = {
 # Functions
 # -------------------------------------------------------------------------------------------------
 
-@st.experimental_singleton
 def fetch_tickers( tickers ):
     
     _list = Ticker( tickers, verify=False, asynchronous=True )
@@ -693,8 +692,15 @@ if menu == 'Market':
 
     # load historical data
     market_list = fetch_tickers( ticker_list )
-    market_info = fetch_info   ( market_list, cache_key='market'+str(st.session_state.mkcnt) )
-    market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market'+str(st.session_state.mkcnt) )
+
+    # if fails (when market changes), change cache key and try again
+    try:
+        market_info = fetch_info   ( market_list, cache_key='market'+str(st.session_state.mkcnt) )
+        market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market'+str(st.session_state.mkcnt) )
+    except:
+        st.session_state.mkcnt += 1
+        market_info = fetch_info   ( market_list, cache_key='market'+str(st.session_state.mkcnt) )
+        market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market'+str(st.session_state.mkcnt) )
 
     # draw
     for option in ticker_list:
