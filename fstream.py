@@ -690,12 +690,11 @@ if menu == 'Market':
 
     # load historical data
     market_list = fetch_tickers( ticker_list )
+    market_info = fetch_info   ( market_list, cache_key='market'+str(st.session_state.mkcnt) )
+    market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market'+str(st.session_state.mkcnt) )
 
-    # if fails (when market changes), change cache key and try again
-    try:
-        market_info = fetch_info   ( market_list, cache_key='market'+str(st.session_state.mkcnt) )
-        market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market'+str(st.session_state.mkcnt) )
-    except:
+    # if unmatched (when market changes), change cache key and try again
+    if set( market_info['price'].keys() ) != set( ticker_list ):
         st.session_state.mkcnt += 1
         market_info = fetch_info   ( market_list, cache_key='market'+str(st.session_state.mkcnt) )
         market_hist = fetch_history( market_list, period='5d', interval='5m', cache_key='market'+str(st.session_state.mkcnt) )
