@@ -347,7 +347,7 @@ def cb_ticker_list():
 
         # split ticker and allocation
         elem_sub = elem.split(':')
-        _ticker = elem_sub[0]
+        _ticker = elem_sub[0].upper()
         if len( elem_sub ) > 1: _alloc = int( elem_sub[1] )
         else: _alloc = 1
 
@@ -356,12 +356,10 @@ def cb_ticker_list():
 
     # validate
     _verified_list = {}
-    p = Ticker( list( _ticker_list ), verify=False, validate=True ).price
+    t = Ticker( list( _ticker_list ), verify=False, validate=True )
     for k in _ticker_list:
-        try:
-            if p[ k ]: _verified_list[ k ] = _ticker_list[ k ]
-        except:
-            pass
+        if k in t.symbols:
+            _verified_list[ k ] = _ticker_list[ k ]
 
     # if nothing, use default port
     if _verified_list == {}: _verified_list = _DEFAULT_PORT
