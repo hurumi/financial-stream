@@ -3,6 +3,7 @@
 #
 
 # disable SSL warnings
+from math import nan
 import urllib3
 urllib3.disable_warnings( urllib3.exceptions.InsecureRequestWarning )
 
@@ -21,7 +22,7 @@ import fschart  as fc
 import argparse
 
 from yahooquery import Ticker
-from numpy import NaN
+from numpy import NaN, isnan
 
 # -------------------------------------------------------------------------------------------------
 # Globals
@@ -303,6 +304,7 @@ def get_port_gains():
             prev_price = []
             for option in port_k:
                 num_points = get_num_points( stock_hist['close'][option].index, [ delta, 0 ] )
+                while isnan( stock_hist['close'][option][-num_points] ): num_points-=1
                 prev_price.append( stock_hist['close'][option][-num_points] )
         else:
             prev_price = [ stock_info['price'][option]['regularMarketPreviousClose'] for option in port_k ]

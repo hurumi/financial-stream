@@ -294,7 +294,7 @@ def get_btest_source( po_hist, be_hist, num_points, params ):
     # get portfolio data
     total_alloc = 0
     for index, ticker in enumerate( params['port'] ):
-        elem = po_hist[ 'close' ][ ticker ].copy()
+        elem = po_hist[ 'close' ][ ticker ][-num_points:].copy()
         elem /= elem[-num_points]
         elem -= 1
         elem *= 100 * params['port'][ticker]
