@@ -428,6 +428,7 @@ st.sidebar.title( 'Financial Stream' )
 menu   = st.sidebar.radio( "MENU", ( 'Market', 'Sector', 'Portfolio', 'Stock', 'Pattern', 'Fear & Greed' ) )
 button = st.sidebar.button( "Clear Cache" )
 if button: st.experimental_singleton.clear() 
+st.sidebar.markdown( '[**GitHub**](https://github.com/hurumi/financial-stream)' )
 
 # -------------------------------------------------------------------------------------------------
 # Fetch data
