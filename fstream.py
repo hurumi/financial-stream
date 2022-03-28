@@ -946,10 +946,11 @@ if menu == 'Bond':
     # sub title
     st.subheader( 'US Bond' )
 
+    col1, col2 = st.columns( 2 )
     # Bond selector
     values = _US_BOND
-    bond1  = st.selectbox( 'Bond 1', values, index=1, key="bond1period" )
-    bond2  = st.selectbox( 'Bond 2', values, index=4, key="bond2period" )
+    bond1  = col1.selectbox( 'Bond 1', values, index=1, key="bond1period" )
+    bond2  = col2.selectbox( 'Bond 2', values, index=4, key="bond2period" )
 
     # points selector
     values = [ '1Y', '6M', '3M', '1M' ]

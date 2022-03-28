@@ -611,13 +611,14 @@ def get_bond_chart( bond1_info, bond2_info, num_points ):
     source = pd.concat( [ source1, source2 ] )
 
     # chart 1
+    domain = [ bond1_info[0], bond2_info[0] ]
     t1 = bond1_info[1]['Close'][-1]
     t2 = bond2_info[1]['Close'][-1]
     ch1 = alt.Chart( source ).mark_line().encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Yield', scale=alt.Scale( zero=False )  ),
         tooltip = [ 'Metric', 'Date', alt.Tooltip( 'Yield', format='.3f' ) ],
-        color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
+        color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ), scale=alt.Scale(domain=domain) )
     ).properties( title = f'{bond1_info[0]} ({t1:.3f}%) & {bond2_info[0]} ({t2:.3f}%)' )
 
     # prepare delta
