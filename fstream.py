@@ -506,7 +506,11 @@ if menu == 'Portfolio':
 
         # load data
         bench_hist = fetch_history( bench_list,  period='1y', interval='1d', cache_key='bench'+str(st.session_state.stcnt) )
-        num_points = get_num_points( bench_hist['close'][ params['bench'][0] ].index, period_delta[period] )
+
+        # compute min number of points
+        _temp_list =  [ get_num_points( bench_hist['close'][ elem ].index, period_delta[period] ) for elem in params['bench'] ]
+        _temp_list += [ get_num_points( stock_hist['close'][ elem ].index, period_delta[period] ) for elem in params['port' ] ]
+        num_points = min( _temp_list )
 
         # draw chart
         bt_src, bt_inf = fc.get_btest_source( stock_hist, bench_hist, num_points, params )
