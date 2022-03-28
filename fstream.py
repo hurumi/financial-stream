@@ -20,6 +20,7 @@ import json
 import datetime as dt
 import fschart  as fc
 import argparse
+import investpy
 
 from yahooquery import Ticker
 from numpy import NaN, isnan
@@ -38,6 +39,7 @@ _RSI_THRESHOLD_L =   30
 _RSI_THRESHOLD_H =   70
 _CCI_THRESHOLD_L = -100
 _CCI_THRESHOLD_H =  100
+_US_BOND         = [ 'U.S. 30Y', 'U.S. 10Y', 'U.S. 5Y', 'U.S. 3Y', 'U.S. 2Y', 'U.S. 1Y' ]
 
 sector_tickers = {
     'XLK': 'Technology',
@@ -142,6 +144,18 @@ def fetch_history( _ticker_list, period, interval, cache_key ):
 
     _hist = _ticker_list.history( period, interval, adj_timezone=False )
     return _hist
+
+@st.experimental_singleton
+def fetch_bond_history( bond_name, cache_key ):
+
+    to_date = dt.datetime.today()
+    fr_date = to_date - dt.timedelta( days = 365 )
+    to_date_str = to_date.strftime( '%d/%m/%Y' )
+    fr_date_str = fr_date.strftime( '%d/%m/%Y' )
+
+    result = investpy.get_bond_historical_data( bond=bond_name, from_date=fr_date_str, to_date=to_date_str )
+
+    return result
 
 @st.experimental_singleton
 def fill_table( _st_info, _st_hist, cache_key ):
@@ -425,7 +439,7 @@ args = parser.parse_args()
 
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
-menu   = st.sidebar.radio( "MENU", ( 'Market', 'Sector', 'Portfolio', 'Stock', 'Pattern', 'Fear & Greed' ) )
+menu   = st.sidebar.radio( "MENU", ( 'Market', 'Sector', 'Portfolio', 'Stock', 'Pattern', 'Fear & Greed', 'Bond' ) )
 button = st.sidebar.button( "Clear Cache" )
 if button: st.experimental_singleton.clear() 
 st.sidebar.markdown( '[**GitHub**](https://github.com/hurumi/financial-stream)' )
@@ -452,6 +466,7 @@ bench_list = fetch_tickers( params['bench'] )
 if 'stcnt' not in st.session_state: st.session_state.stcnt = 0
 if 'mkcnt' not in st.session_state: st.session_state.mkcnt = 0
 if 'secnt' not in st.session_state: st.session_state.secnt = 0
+if 'bdcnt' not in st.session_state: st.session_state.bdcnt = 0
 
 # -------------------------------------------------------------------------------------------------
 # Portfolio
@@ -921,3 +936,36 @@ if menu == 'Fear & Greed':
 
     st.markdown( '##### 3-year history' )
     st.image( overtime_url, use_column_width='auto' )
+
+# -------------------------------------------------------------------------------------------------
+# Bond
+# -------------------------------------------------------------------------------------------------
+
+if menu == 'Bond':
+
+    # sub title
+    st.subheader( 'US Bond' )
+
+    # Bond selector
+    values = _US_BOND
+    bond1  = st.selectbox( 'Bond 1', values, index=1, key="bond1period" )
+    bond2  = st.selectbox( 'Bond 2', values, index=4, key="bond2period" )
+
+    # points selector
+    values = [ '1Y', '6M', '3M', '1M' ]
+    period = st.selectbox( 'Period', values, key="bondperiod" )
+
+    if st.button( 'Refresh' ):
+        st.session_state.bdcnt += 1
+
+    # fetch data
+    df1 = fetch_bond_history( bond1, cache_key='bond1'+str(st.session_state.bdcnt) )
+    df2 = fetch_bond_history( bond2, cache_key='bond1'+str(st.session_state.bdcnt) )
+
+    # get charts
+    num_points = get_num_points( df1['Close'].index, period_delta[period] )
+    ch1, ch2   = fc.get_bond_chart( [ bond1, df1 ], [ bond2, df2 ], num_points )
+
+    # draw
+    st.altair_chart( ch1, use_container_width=True )
+    st.altair_chart( ch2, use_container_width=True )

@@ -594,3 +594,45 @@ def get_sector_chart( _se_info, _se_hist, num_points ):
     )
 
     return ch+label
+
+def get_bond_chart( bond1_info, bond2_info, num_points ):
+
+    # prepare source
+    source1 = pd.DataFrame( {
+        'Metric': bond1_info[0],
+        'Date':   bond1_info[1].index[-num_points:],
+        'Yield':  bond1_info[1]['Close'][-num_points:].values
+    } )
+    source2 = pd.DataFrame( {
+        'Metric': bond2_info[0],
+        'Date':   bond2_info[1].index[-num_points:],
+        'Yield':  bond2_info[1]['Close'][-num_points:].values
+    } )
+    source = pd.concat( [ source1, source2 ] )
+
+    # chart 1
+    t1 = bond1_info[1]['Close'][-1]
+    t2 = bond2_info[1]['Close'][-1]
+    ch1 = alt.Chart( source ).mark_line().encode(
+        x=alt.X( 'Date' ),
+        y=alt.Y( 'Yield', scale=alt.Scale( zero=False )  ),
+        tooltip = [ 'Metric', 'Date', alt.Tooltip( 'Yield', format='.3f' ) ],
+        color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ) )
+    ).properties( title = f'{bond1_info[0]} ({t1:.3f}%) & {bond2_info[0]} ({t2:.3f}%)' )
+
+    # prepare delta
+    source3 = pd.DataFrame( {
+        'Metric': f'{bond1_info[0]} - {bond2_info[0]}',
+        'Date':   bond1_info[1].index[-num_points:],
+        'Yield':  bond1_info[1]['Close'][-num_points:].values-bond2_info[1]['Close'][-num_points:].values
+    } )
+
+    # chart 2
+    t3 = t1 - t2
+    ch2 = alt.Chart( source3 ).mark_line().encode(
+        x=alt.X( 'Date' ),
+        y=alt.Y( 'Yield', scale=alt.Scale( zero=False )  ),
+        tooltip = [ 'Metric', 'Date', alt.Tooltip( 'Yield', format='.3f' ) ],
+    ).properties( title = f'{bond1_info[0]} - {bond2_info[0]} ({t3:.3f}%)' )
+
+    return ch1, ch2
