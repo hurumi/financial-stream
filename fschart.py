@@ -614,12 +614,14 @@ def get_bond_chart( bond1_info, bond2_info, num_points ):
     domain = [ bond1_info[0], bond2_info[0] ]
     t1 = bond1_info[1]['Close'][-1]
     t2 = bond2_info[1]['Close'][-1]
+    d1 = t1 - bond1_info[1]['Close'][-2]
+    d2 = t2 - bond2_info[1]['Close'][-2]
     ch1 = alt.Chart( source ).mark_line().encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Yield', scale=alt.Scale( zero=False )  ),
         tooltip = [ 'Metric', 'Date', alt.Tooltip( 'Yield', format='.3f' ) ],
         color = alt.Color( 'Metric', legend=alt.Legend( orient="top-left" ), scale=alt.Scale(domain=domain) )
-    ).properties( title = f'{bond1_info[0]} ({t1:.3f}%) & {bond2_info[0]} ({t2:.3f}%)' )
+    ).properties( title = f'{bond1_info[0]}: {t1:.3f}% ({d1:.3f}%) & {bond2_info[0]}: {t2:.3f}% ({d2:.3f}%)' )
 
     # prepare delta
     source3 = pd.DataFrame( {
@@ -630,10 +632,11 @@ def get_bond_chart( bond1_info, bond2_info, num_points ):
 
     # chart 2
     t3 = t1 - t2
+    d3 = d1 - d2
     ch2 = alt.Chart( source3 ).mark_line().encode(
         x=alt.X( 'Date' ),
         y=alt.Y( 'Yield', scale=alt.Scale( zero=False )  ),
         tooltip = [ 'Metric', 'Date', alt.Tooltip( 'Yield', format='.3f' ) ],
-    ).properties( title = f'{bond1_info[0]} - {bond2_info[0]} ({t3:.3f}%)' )
+    ).properties( title = f'{bond1_info[0]} - {bond2_info[0]}: {t3:.3f}% ({d3:.3f}%)' )
 
     return ch1, ch2
