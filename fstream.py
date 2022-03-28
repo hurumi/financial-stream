@@ -960,7 +960,7 @@ if menu == 'Bond':
 
     # fetch data
     df1 = fetch_bond_history( bond1, cache_key='bond1'+str(st.session_state.bdcnt) )
-    df2 = fetch_bond_history( bond2, cache_key='bond1'+str(st.session_state.bdcnt) )
+    df2 = fetch_bond_history( bond2, cache_key='bond2'+str(st.session_state.bdcnt) )
 
     # get charts
     num_points = get_num_points( df1['Close'].index, period_delta[period] )
