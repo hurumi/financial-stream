@@ -39,7 +39,7 @@ _RSI_THRESHOLD_L =   30
 _RSI_THRESHOLD_H =   70
 _CCI_THRESHOLD_L = -100
 _CCI_THRESHOLD_H =  100
-_US_BOND         = [ 'U.S. 30Y', 'U.S. 10Y', 'U.S. 5Y', 'U.S. 3Y', 'U.S. 2Y', 'U.S. 1Y' ]
+_US_BOND         = [ 'U.S. 30Y', 'U.S. 10Y', 'U.S. 5Y', 'U.S. 3Y', 'U.S. 2Y', 'U.S. 1Y', 'U.S. 6M', 'U.S. 3M', 'U.S. 1M' ]
 
 sector_tickers = {
     'XLK': 'Technology',
@@ -964,8 +964,10 @@ if menu == 'Bond':
     df2 = fetch_bond_history( bond2, cache_key='bond2'+str(st.session_state.bdcnt) )
 
     # get charts
-    num_points = get_num_points( df1['Close'].index, period_delta[period] )
-    ch1, ch2   = fc.get_bond_chart( [ bond1, df1 ], [ bond2, df2 ], num_points )
+    num_points1 = get_num_points( df1['Close'].index, period_delta[period] )
+    num_points2 = get_num_points( df2['Close'].index, period_delta[period] )
+    num_points  = min( num_points1, num_points2 )
+    ch1, ch2    = fc.get_bond_chart( [ bond1, df1 ], [ bond2, df2 ], num_points )
 
     # draw
     st.altair_chart( ch1, use_container_width=True )
