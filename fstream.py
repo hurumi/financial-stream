@@ -117,7 +117,6 @@ params = {
     'gain_period'   : '3M',
     'stock_period'  : '3M',
     'pattern_period': '3M',
-    'fear_period'   : '3M',
 }
 
 # -------------------------------------------------------------------------------------------------
@@ -421,10 +420,6 @@ def cb_pattern_period():
     params[ 'pattern_period' ] = st.session_state.patternperiod
     save_params( params )
 
-def cb_fear_period():
-    params[ 'fear_period' ] = st.session_state.fearperiod
-    save_params( params )
-
 # -------------------------------------------------------------------------------------------------
 # Commandline arguments
 # -------------------------------------------------------------------------------------------------
@@ -439,7 +434,7 @@ args = parser.parse_args()
 
 # add sidebar
 st.sidebar.title( 'Financial Stream' )
-menu   = st.sidebar.radio( "MENU", ( 'Market', 'Sector', 'Portfolio', 'Stock', 'Pattern', 'Fear & Greed', 'Bond' ) )
+menu   = st.sidebar.radio( "MENU", ( 'Market', 'Sector', 'Portfolio', 'Stock', 'Pattern', 'Bond' ) )
 button = st.sidebar.button( "Clear Cache" )
 if button: st.experimental_singleton.clear() 
 st.sidebar.markdown( '[**GitHub**](https://github.com/hurumi/financial-stream)' )
@@ -887,55 +882,6 @@ if menu == 'Pattern':
 
     # draw
     st.altair_chart( price_chart, use_container_width=True )
-
-# -------------------------------------------------------------------------------------------------
-# Fear & Greed
-# -------------------------------------------------------------------------------------------------
-
-if menu == 'Fear & Greed':
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader( 'Fear & Greed Index' )
-    with col2:
-        st.write( ' ' )
-        st.caption("Source: [CNN Business](https://money.cnn.com/data/fear-and-greed/)")
-
-    # ---------------------------------------------------------------------------------------------
-    # Approximation by Image recognition
-    # ---------------------------------------------------------------------------------------------
-
-    # get source
-    needle_url, fear_list, overtime_url, fg_hist = fc.get_fear_grid_trend_source()
-
-    # needle chart
-    st.image( needle_url, use_column_width='auto' )
-
-    # trend chart
-    st.write( '' )
-    st.write( '' )
-    st.markdown( '##### Approximated Trend' )    
-
-    # points selector
-    values = [ '1M', '3M', '6M', '1Y' ]
-    period = st.selectbox( 'Period', values,
-                            index=values.index( params['fear_period'] ),
-                            key="fearperiod",
-                            on_change=cb_fear_period )
-
-    num_points = get_num_points( fg_hist.index, period_delta[period] )
-    fear_chart = fc.get_fear_grid_trend_chart( fear_list, fg_hist, num_points )
-    
-    st.write( '' )    
-    st.altair_chart( fear_chart, use_container_width=True )
-
-    # ---------------------------------------------------------------------------------------------
-    # 3-year history
-    # ---------------------------------------------------------------------------------------------
-
-    st.markdown( '##### 3-year history' )
-    st.image( overtime_url, use_column_width='auto' )
 
 # -------------------------------------------------------------------------------------------------
 # Bond
