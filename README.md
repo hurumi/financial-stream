@@ -64,6 +64,13 @@ bearish_pattern = [
 <img src="/images/pattern.png" width="100%">
 <hr>
 
+#### Bond menu
+* Show comparison charts for two selected US bonds and difference between them
+* US bonds of various durations (30Y, 10Y, 5Y, 2Y, 1Y, 6M, 3M and 1M) can be compared
+
+<img src="/images/bond.png" width="100%">
+<hr>
+
 #### Example configuration parameter (param.json)
 
 ```json
