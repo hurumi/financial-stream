@@ -217,7 +217,10 @@ def fill_table( _st_info, _st_hist, cache_key ):
         try:
             df.loc[ 'P/E' ][ key ] = _st_info[ 'fund' ][ key ][ 'equityHoldings' ][ 'priceToEarnings' ]
         except:
-            df.loc[ 'P/E' ][ key ] = NaN
+            try:
+                df.loc[ 'P/E' ][ key ] = NaN
+            except:
+                pass
 
     # allocation
     alo_list = []
